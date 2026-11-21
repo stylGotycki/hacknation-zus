@@ -1,27 +1,32 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* shadcn/ui theme tokens. Primary is a calm green, close to ZUS branding. */
+/* shadcn/ui theme tokens. */
 :root {
+  /* ZUS palette (see "Paleta barw ZUS"): green #007834 is primary, navy and blue are accents. */
   --radius: 0.75rem;
-  --background: oklch(0.99 0.004 150);
-  --foreground: oklch(0.22 0.02 160);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.02 160);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.02 160);
-  --primary: oklch(0.52 0.13 152);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.95 0.02 150);
-  --secondary-foreground: oklch(0.3 0.05 155);
-  --muted: oklch(0.96 0.008 150);
-  --muted-foreground: oklch(0.5 0.02 160);
-  --accent: oklch(0.94 0.03 150);
-  --accent-foreground: oklch(0.3 0.05 155);
-  --destructive: oklch(0.58 0.22 27);
-  --border: oklch(0.91 0.01 150);
-  --input: oklch(0.91 0.01 150);
-  --ring: oklch(0.52 0.13 152);
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  --primary: #007834;
+  --primary-dark: #006837;
+  --primary-foreground: #ffffff;
+  --brand-light: #009944;
+  --secondary: #e6f4ec;
+  --secondary-foreground: #006837;
+  --muted: #f4f6f8;
+  --muted-foreground: #666666;
+  --accent: #e6f4ec;
+  --accent-foreground: #006837;
+  --navy: #003b73;
+  --info: #0066b3;
+  --destructive: #c62828;
+  --border: #d9dfe4;
+  --input: #d9dfe4;
+  --ring: #007834;
 }
 
 @theme inline {
@@ -40,6 +45,10 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-primary-dark: var(--primary-dark);
+  --color-brand-light: var(--brand-light);
+  --color-navy: var(--navy);
+  --color-info: var(--info);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

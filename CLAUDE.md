@@ -30,3 +30,9 @@
 - UI components: shadcn/ui in `frontend/src/components/ui` (`npx shadcn add <name>`).
 - Mobile first: every screen must work at 390 px width.
 - Before finishing a task: `make test` passes and `npm run build` (in `frontend/`) succeeds.
+- Rules engine (E1): entry point `app.rules.evaluate(profile, params)`; the API wrapper is
+  `backend/app/api/rules.py`. A new rule = a parameter in the seed + code in the matching module of
+  `backend/app/rules/` + a test in `app/tests/test_rules.py`. `PlanError` means the user's plan breaks
+  a legal limit (HTTP 422); `MissingParameterError` means a parameter is missing (HTTP 409).
+- Frontend types for the engine live in `frontend/src/lib/api.ts` (`FamilyProfile`, `EvaluationResult`);
+  keep them in sync with `backend/app/rules/models.py`.

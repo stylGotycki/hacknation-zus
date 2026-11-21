@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
 
-import { PagePlaceholder } from "@/components/page-placeholder";
+import { CalculatorForm } from "@/components/calculator/calculator-form";
 
 export const metadata: Metadata = { title: "Kalkulator" };
 
 export default function CalculatorPage() {
   return (
-    <PagePlaceholder
-      epic="E2"
-      title="Kalkulator zasiłku i urlopów"
-      description="Policz, ile wyniesie zasiłek macierzyński i jak długo potrwają urlopy."
-      planned={[
-        "Podstawa wymiaru: pracownik / JDG / zlecenie",
-        "Porównanie wariantu 100% + 70% z wariantem 81,5%",
-        "Długość urlopów wg liczby dzieci i zaświadczenia „Za życiem”",
-      ]}
-    />
+    <section className="flex flex-col gap-8">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Kalkulator zasiłku i urlopów</h1>
+        <p className="max-w-2xl text-muted-foreground">
+          Podaj kilka danych o rodzinie, a policzymy długość urlopów, wysokość zasiłków, wskażemy, gdzie złożyć
+          wnioski, i ostrzeżemy przed sytuacjami, w których można stracić świadczenia. Wynik ma charakter
+          informacyjny.
+        </p>
+      </div>
+      <CalculatorForm />
+    </section>
   );
 }

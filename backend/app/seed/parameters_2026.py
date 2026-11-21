@@ -238,6 +238,109 @@ PARAMETERS: list[dict] = [
         "Roczne limity dni zasiłku opiekuńczego wg sytuacji; łącznie nie więcej niż 60 dni.",
         f"{BENEFITS_ACT}, art. 32–33",
     ),
+    # --- Supplementary maternity leave (details) ----------------------------------------------
+    p(
+        "supplementary_leave_criteria",
+        {
+            "long_gestation_weeks_below": 28,
+            "long_birth_weight_g_max": 1000,
+            "preterm_gestation_weeks_below": 37,
+            "hospital_from_day_after_birth": 5,
+            "long_horizon_weeks": 15,
+            "short_horizon_weeks": 8,
+            "term_min_stay_days": 2,
+            "term_first_day_window": [5, 28],
+        },
+        "Kryteria uzupełniającego urlopu macierzyńskiego: do 15 tygodni (poród przed 28. tygodniem "
+        "ciąży lub masa do 1000 g), do 8 tygodni (poród przed 37. tygodniem albo dziecko "
+        "urodzone w terminie, ale hospitalizowane co najmniej 2 dni od 5. do 28. dnia życia). "
+        "Wymiar = 1 tydzień za każdy tydzień pobytu dziecka w szpitalu od 5. dnia po porodzie.",
+        f"{LABOR_CODE}, art. 180² (od 19.03.2025)",
+    ),
+    p(
+        "adoption_leave_max_child_age_years",
+        {"foster": 7, "foster_school_deferred": 10, "adoption": 14},
+        "Maksymalny wiek dziecka, przy którym przysługuje urlop na warunkach macierzyńskiego: "
+        "rodzina zastępcza niezawodowa do 7 lat (10 przy odroczonym obowiązku szkolnym), "
+        "wniosek o przysposobienie do 14 lat.",
+        f"{LABOR_CODE}, art. 183",
+    ),
+    p(
+        "parental_work_max_fraction",
+        0.5,
+        "Łącząc urlop rodzicielski z pracą u tego samego pracodawcy, można pracować "
+        "najwyżej w połowie pełnego wymiaru czasu pracy.",
+        f"{LABOR_CODE}, art. 186⁴",
+    ),
+    p(
+        "application_lead_days",
+        {"parental": 21, "paternity": 7, "supplementary": 21},
+        "Na ile dni przed rozpoczęciem urlopu trzeba złożyć wniosek do pracodawcy.",
+        f"{LABOR_CODE}, art. 182¹ᵈ, 182³, 180² – {TO_VERIFY}",
+    ),
+    # --- Fallback benefit for people without sickness insurance ---------------------------------
+    p(
+        "parental_benefit_monthly",
+        1000.00,
+        "Świadczenie rodzicielskie („kosiniakowe”) – stała kwota miesięczna, "
+        "gdy nie przysługuje zasiłek macierzyński.",
+        "Ustawa o świadczeniach rodzinnych – do weryfikacji artykułu",
+    ),
+    p(
+        "parental_benefit_weeks",
+        {"1": 52, "2": 65, "3": 67, "4": 69, "5": 71},
+        "Okres pobierania świadczenia rodzicielskiego w tygodniach wg liczby dzieci "
+        "urodzonych przy jednym porodzie.",
+        "Ustawa o świadczeniach rodzinnych – do weryfikacji artykułu",
+    ),
+    p(
+        "parental_benefit_application_months",
+        3,
+        "Wniosek o świadczenie rodzicielskie złożony w ciągu tylu miesięcy od porodu daje prawo "
+        "do świadczenia od dnia porodu; później – od miesiąca złożenia wniosku.",
+        "Ustawa o świadczeniach rodzinnych – do weryfikacji artykułu",
+    ),
+    # --- Net amount estimate (informational only) ------------------------------------------------
+    p(
+        "health_contribution_rate",
+        0.09,
+        "Składka zdrowotna potrącana od zasiłku (do szacunku kwoty netto).",
+        "Ustawa o świadczeniach opieki zdrowotnej – do weryfikacji artykułu",
+    ),
+    p(
+        "income_tax_rate",
+        0.12,
+        "Stawka zaliczki na podatek dochodowy w pierwszym progu (do szacunku kwoty netto).",
+        "Ustawa o podatku dochodowym od osób fizycznych – do weryfikacji artykułu",
+    ),
+    p(
+        "income_tax_monthly_reduction",
+        300.00,
+        "Miesięczna kwota zmniejszająca zaliczkę na podatek (3600 zł rocznie / 12) – "
+        "do szacunku kwoty netto.",
+        "Ustawa o podatku dochodowym od osób fizycznych – do weryfikacji artykułu",
+    ),
+    # --- Misc ---------------------------------------------------------------------------------
+    p(
+        "benefit_days_per_month",
+        30,
+        "Zasiłek za niepełny miesiąc liczy się jako 1/30 miesięcznej kwoty za każdy dzień.",
+        f"{BENEFITS_ACT}, art. 35",
+    ),
+    p(
+        "stillbirth_child_death_weeks_limit",
+        8,
+        "Zgon dziecka przed ukończeniem tylu tygodni życia traktuje się jak martwe urodzenie "
+        "przy ustalaniu wymiaru urlopu macierzyńskiego.",
+        f"{LABOR_CODE}, art. 180",
+    ),
+    p(
+        "care_allowance_age_limits_years",
+        {"healthy_child": 8, "sick_child": 14, "disabled_child": 18},
+        "Granice wieku dziecka przy zasiłku opiekuńczym (zdrowe dziecko – do 8 lat, "
+        "chore – do 14, niepełnosprawne – do 18).",
+        f"{BENEFITS_ACT}, art. 32",
+    ),
 ]
 
 # Older versions kept to show (and test) how validity periods work.

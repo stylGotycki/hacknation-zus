@@ -22,6 +22,7 @@ make up
 | http://localhost/api/docs | dokumentacja API (Swagger) |
 | http://localhost/api/health | `{"status":"ok"}` |
 | http://localhost/api/parameters?date=2026-11-21 | parametry prawne na dany dzień |
+| `POST` http://localhost/api/rules/evaluate | silnik reguł: profil rodziny → uprawnienia, kwoty, oś czasu, ryzyka |
 
 Port 80 zajęty? Ustaw `HTTP_PORT=8080` w `.env` i otwórz http://localhost:8080.
 
@@ -71,7 +72,7 @@ Next.js ma trasy po angielsku (`/calculator`). Szczegóły w sekcji „Adresy st
 │       ├── core/             # config.py (ustawienia z env), db.py (silnik, sesja, Base)
 │       ├── models/           # tabele SQLAlchemy: legal_parameter, family, application, draft
 │       ├── api/              # endpointy: health.py, parameters.py
-│       ├── rules/            # E1 – silnik reguł (czyste funkcje, bez bazy i HTTP)
+│       ├── rules/            # E1 – silnik reguł (czyste funkcje, bez bazy i HTTP) – patrz „Silnik reguł”
 │       ├── mocks/            # E7 – mObywatel, dane ZUS, e-ZLA, PUE
 │       ├── seed/             # parametry prawne 2026 + (E3) scenariusze ze spraw
 │       └── tests/            # pytest na SQLite w pamięci
@@ -118,6 +119,41 @@ komentarze, komunikaty błędów API i logi. Wyjątek: publiczne adresy stron s�
 (tłumaczy je nginx). Po polsku jest tylko treść dla użytkownika:
 napisy w interfejsie, opisy parametrów, podstawy prawne, dokumentacja.
 Pełna zasada jest w `CLAUDE.md`.
+
+## Silnik reguł (E1)
+
+`backend/app/rules/` to czyste funkcje: profil rodziny (`FamilyProfile`) + parametry prawne (`Params`)
+→ wynik (`EvaluationResult`). Wywołanie: `POST /api/rules/evaluate?date=RRRR-MM-DD` (data wybiera
+wersję parametrów prawnych; domyślnie dziś). Błędny plan (np. 7 tygodni przed porodem) → 422,
+brak parametru na dany dzień → 409.
+
+| Moduł | Zawartość |
+| --- | --- |
+| `models.py` | profil wejściowy (dziecko, rodzice, plan) i typy wyniku |
+| `eligibility.py` | ubezpieczenie w dniu porodu, zadłużenie składkowe, płatnik (pracodawca / ZUS) |
+| `leaves.py` | wymiary urlopów: macierzyński, uzupełniający, rodzicielski, ojcowski, martwe urodzenie, zgon dziecka, adopcja |
+| `money.py` | podstawa wymiaru, kwota za okres (1/30 za niepełny miesiąc), szacunek netto, minimum 1000 zł |
+| `planning.py` | walidacja planu i domyślna oś czasu; stawki 100% / 70% / 81,5% |
+| `benefits.py` | lista świadczeń z uzasadnieniem, dokumentami, terminami i miejscem złożenia wniosku |
+| `risks.py` | ryzyka utraty lub obniżenia świadczeń |
+
+Świadczenia w wyniku: zasiłek chorobowy w ciąży (kod B), zasiłek w wysokości macierzyńskiego,
+macierzyński, uzupełniający, rodzicielski, ojcowski, opiekuńczy, a gdy nikt nie ma ubezpieczenia –
+świadczenie rodzicielskie. Przy poprawnym wniosku do 21 dni po porodzie silnik porównuje też
+warianty „100% + 70%” i „stała 81,5%”.
+
+Wynik zawiera też `deadlines`: ile dni zostało na złożenie każdego wniosku (`days_left`, ujemne = termin
+minął) oraz do kiedy trzeba wykorzystać urlopy. Terminy wniosków do pracodawcy są parametrami prawnymi
+(`application_lead_days`).
+
+Kalkulator na stronie `/kalkulator` korzysta z tego endpointu. Jego wynik widać też na `/os-czasu` –
+pionowej osi w stylu historii commitów (gałąź mamy i taty, każde zdarzenie to punkt). Tata, który nie
+ma żadnego zasiłku, nie pojawia się w podsumowaniu ani na osi.
+
+## Kolory
+
+Interfejs używa palety ZUS: zieleń `#007834` (podstawowa), `#006837` (hover), granat `#003B73`,
+błękit `#0066B3`, mięta `#E6F4EC` i neutralne szarości. Wartości są w `frontend/src/app/globals.css`.
 
 ## Parametry prawne
 
