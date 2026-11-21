@@ -4,6 +4,7 @@ import {
   GitBranch,
   type LucideIcon,
   Settings,
+  ShieldCheck,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -63,6 +64,14 @@ export const NAV_ITEMS: NavItem[] = [
     description: "Prawdziwe sytuacje rodzin na podstawie spraw ZUS.",
     icon: Users,
     epic: "E3",
+  },
+  {
+    route: "zus",
+    href: PUBLIC_PATHS.zus,
+    label: "Dane z ZUS",
+    description: "Ubezpieczenie, zadłużenie, e-ZLA i pytanie do PUE (symulacja po zalogowaniu).",
+    icon: ShieldCheck,
+    epic: "E7",
   },
   {
     route: "admin",

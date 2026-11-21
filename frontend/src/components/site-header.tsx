@@ -6,13 +6,24 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import type { Citizen } from "@/lib/api";
 import { LOGIN_ITEM, NAV_ITEMS } from "@/lib/nav";
 import { isRouteActive } from "@/lib/routes";
+import { endSession, loadCitizen } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 export function SiteHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [citizen, setCitizen] = useState<Citizen | null>(null);
+
+  // The simulated mObywatel session is kept in the browser and announced with a custom event.
+  useEffect(() => {
+    const sync = () => setCitizen(loadCitizen());
+    sync();
+    window.addEventListener("parent-guide:session", sync);
+    return () => window.removeEventListener("parent-guide:session", sync);
+  }, []);
 
   // Close the mobile menu after navigating.
   useEffect(() => setOpen(false), [pathname]);
@@ -41,9 +52,15 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
-          <Button asChild size="sm" className="ml-2">
-            <Link href={LOGIN_ITEM.href}>{LOGIN_ITEM.label}</Link>
-          </Button>
+          {citizen ? (
+            <Button size="sm" variant="outline" className="ml-2" onClick={endSession}>
+              {citizen.first_name} · Wyloguj
+            </Button>
+          ) : (
+            <Button asChild size="sm" className="ml-2">
+              <Link href={LOGIN_ITEM.href}>{LOGIN_ITEM.label}</Link>
+            </Button>
+          )}
         </nav>
 
         {/* Mobile toggle */}
@@ -78,9 +95,15 @@ export function SiteHeader() {
               </li>
             ))}
           </ul>
-          <Button asChild className="mt-3 w-full" size="lg">
-            <Link href={LOGIN_ITEM.href}>{LOGIN_ITEM.label}</Link>
-          </Button>
+          {citizen ? (
+            <Button className="mt-3 w-full" size="lg" variant="outline" onClick={endSession}>
+              {citizen.first_name} · Wyloguj
+            </Button>
+          ) : (
+            <Button asChild className="mt-3 w-full" size="lg">
+              <Link href={LOGIN_ITEM.href}>{LOGIN_ITEM.label}</Link>
+            </Button>
+          )}
         </nav>
       )}
     </header>

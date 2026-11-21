@@ -13,6 +13,7 @@ export const PUBLIC_PATHS = {
   timeline: "/os-czasu",
   applications: "/wnioski",
   examples: "/przyklady",
+  zus: "/dane-zus",
   login: "/logowanie",
   admin: "/admin",
 } as const;

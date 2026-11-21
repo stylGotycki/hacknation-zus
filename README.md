@@ -207,3 +207,14 @@ rodzice – uproszczony ZAM do ZUS. Wersje robocze zapisują się same, wysłany
 - API: `GET /api/forms`, `POST /api/applications/suggestions`, `GET|PUT|DELETE /api/drafts`,
   `GET|POST /api/applications`, `POST /api/applications/{id}/advance`.
 - Tożsamość to na razie nagłówek `X-Owner-Id` z losowym identyfikatorem przeglądarki; mock mObywatel (E7) ją zastąpi.
+
+## Mocki systemów zewnętrznych (E7)
+
+Wszystko to symulacja na danych przykładowych, wyprowadzonych z 12 person (E3).
+
+- `/logowanie` – mock mObywatel: wybór osoby, ekran potwierdzenia, sesja w przeglądarce (nagłówek pokazuje imię i „Wyloguj”).
+  Logowanie ustawia `X-Owner-Id` (`mobywatel-S<n>`), więc wnioski i wersje robocze są osobne dla każdej osoby.
+- `/dane-zus` – „Pobierz dane z ZUS”: poświadczenie ubezpieczenia z historią podstawy, zaświadczenie o zadłużeniu
+  (na dzień powstania prawa do świadczenia), lista e-ZLA, pytanie do PUE/eZUS oraz „Policz uprawnienia z danych ZUS”.
+- API: `GET /api/mock/citizens`, `POST /api/mock/mobywatel/login`, `GET /api/mock/zus/{id}/insurance|debt-certificate|ezla|profile`,
+  `POST /api/mock/pue/question`. Kod: `backend/app/mocks/data.py`, `backend/app/api/mocks.py`.
