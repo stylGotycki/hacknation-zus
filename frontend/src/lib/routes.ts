@@ -14,6 +14,7 @@ export const PUBLIC_PATHS = {
   applications: "/wnioski",
   examples: "/przyklady",
   zus: "/dane-zus",
+  help: "/pomoc",
   login: "/logowanie",
   admin: "/admin",
 } as const;

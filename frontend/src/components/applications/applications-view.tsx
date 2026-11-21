@@ -31,7 +31,7 @@ const STATUS_LABEL: Record<ApplicationStatus, string> = {
   in_progress: "W rozpatrzeniu",
   decided: "Rozpatrzony",
 };
-const TO_LABEL = { employer: "pracodawca", zus: "ZUS" } as const;
+const TO_LABEL = { employer: "pracodawca", zus: "ZUS", registry: "urząd stanu cywilnego" } as const;
 
 type Editing = { definition: FormDefinition; data: FormData; step: number };
 
@@ -59,6 +59,10 @@ export function ApplicationsView() {
       .then(([f, , s]) => {
         setForms(f);
         setSuggestions(s);
+        // A link such as /wnioski?form=civil_registry_extract opens that form straight away.
+        const wanted = new URLSearchParams(window.location.search).get("form");
+        const definition = f.find((item) => item.code === wanted);
+        if (definition) setEditing({ definition, data: {}, step: 0 });
       })
       .catch((e: Error) => setError(e.message));
   }, [refresh]);

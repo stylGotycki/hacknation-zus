@@ -174,7 +174,7 @@ export function ApplicationForm({
           {last ? (
             <Button onClick={submit} disabled={sending || missing.length > 0}>
               {sending ? <Loader2 className="animate-spin" /> : <Check />}
-              {definition.submitted_to === "zus" ? "Wyślij do ZUS" : "Wyślij do pracodawcy"}
+              {{ zus: "Wyślij do ZUS", employer: "Wyślij do pracodawcy", registry: "Wyślij do urzędu" }[definition.submitted_to]}
             </Button>
           ) : (
             <Button onClick={() => go(1)} disabled={missing.length > 0}>

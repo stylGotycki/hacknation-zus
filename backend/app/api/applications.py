@@ -216,7 +216,7 @@ def advance_application(application_id: int, owner: OwnerId, db: DbSession) -> A
         raise HTTPException(409, "Application is already decided")
     nxt = STATUS_FLOW[index + 1]
     application.status = nxt
-    who = "ZUS" if application.submitted_to == "zus" else "pracodawcę"
+    who = {"zus": "ZUS", "registry": "urząd stanu cywilnego"}.get(application.submitted_to or "", "pracodawcę")
     note = STATUS_NOTE_PL[nxt] + (f" (przez {who})" if nxt == "in_progress" else "")
     application.history = [*application.history, {"at": _now(), "status": nxt, "note": note}]
     db.commit()

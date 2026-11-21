@@ -62,3 +62,18 @@ def test_application_status_advances_to_decided(client):
     assert done["status"] == "decided" and len(done["history"]) == 3
     assert client.post(f"/api/applications/{app_id}/advance", headers=OWNER).status_code == 409
     assert client.post(f"/api/applications/{app_id}/advance", headers={"X-Owner-Id": "other"}).status_code == 404
+
+
+def test_civil_registry_extract_form_is_listed_and_submits(client):
+    forms = client.get("/api/forms").json()
+    definition = next(f for f in forms if f["code"] == "civil_registry_extract")
+    assert definition["submitted_to"] == "registry"
+
+    data = {
+        "first_name": "Anna", "last_name": "Nowak", "pesel": "90010112345", "relation": "parent",
+        "child_first_name": "Jan", "child_last_name": "Nowak", "child_date": "2026-05-10",
+        "birth_place": "Warszawa", "extract_type": "short", "declaration": True,
+    }
+    r = client.post("/api/applications", json={"form_code": "civil_registry_extract", "data": data}, headers=OWNER)
+    assert r.status_code == 201, r.text
+    assert r.json()["submitted_to"] == "registry"

@@ -232,3 +232,15 @@ Wszystko to symulacja na danych przykładowych, wyprowadzonych z 12 person (E3).
 - API: `GET /api/admin/parameters`, `POST /api/admin/parameters/{key}/versions`,
   `DELETE /api/admin/parameters/{key}/versions/{valid_from}`, `GET /api/admin/applications`,
   `POST /api/admin/applications/{id}/status` (nagłówek `X-Admin-Token`).
+
+## Strona startowa i pomoc (E9)
+
+- **Strona startowa** (`/`) – hasło, obietnice produktu, ścieżka w czterech krokach (przykładowa sprawa → ubezpieczenie
+  w symulowanym ZUS → kalkulator → wnioski), kafelki wszystkich narzędzi i odnośnik do pomocy.
+- **Pomoc i wsparcie** (`/pomoc`, folder `src/app/help`) – oficjalne odnośniki (ZUS, MRPiPS – urlop rodzicielski, PIP –
+  rodzicielstwo, dodatkowy urlop dla rodziców wcześniaków, zmiany po stracie dziecka, rejestr stanu cywilnego na gov.pl)
+  oraz przykładowe organizacje niekomercyjne: po stracie dziecka lub ciąży, dla rodziców wcześniaków i dzieci
+  w szpitalu, dla rodzin ciężko chorych dzieci. Treść jest w jednym pliku: `frontend/src/content/support.ts`.
+  Dane kontaktowe się zmieniają, dlatego strona odsyła do stron organizacji i KRS, a nie podaje telefonów.
+- **Symulowany wniosek o odpis aktu urodzenia** – nowy formularz `civil_registry_extract` (adresat: urząd stanu cywilnego),
+  dostępny z listy wniosków i bezpośrednio przez `/wnioski?form=civil_registry_extract`. Nic nie trafia do urzędu.

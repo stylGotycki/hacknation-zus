@@ -276,7 +276,7 @@ export type FormDefinition = {
   code: string;
   title_pl: string;
   description_pl: string;
-  submitted_to: "employer" | "zus";
+  submitted_to: "employer" | "zus" | "registry";
   steps: FormStepDef[];
 };
 export type FormData = Record<string, string | number | boolean | null>;
@@ -296,7 +296,7 @@ export type ApplicationRecord = {
   form_code: string;
   title_pl: string;
   status: ApplicationStatus;
-  submitted_to: "employer" | "zus" | null;
+  submitted_to: "employer" | "zus" | "registry" | null;
   data: FormData;
   history: { at: string; status: string; note: string }[];
   created_at: string | null;

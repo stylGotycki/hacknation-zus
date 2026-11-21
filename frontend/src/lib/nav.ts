@@ -2,6 +2,7 @@ import {
   Calculator,
   FileText,
   GitBranch,
+  HeartHandshake,
   type LucideIcon,
   Settings,
   ShieldCheck,
@@ -72,6 +73,14 @@ export const NAV_ITEMS: NavItem[] = [
     description: "Ubezpieczenie, zadłużenie, e-ZLA i pytanie do PUE (symulacja po zalogowaniu).",
     icon: ShieldCheck,
     epic: "E7",
+  },
+  {
+    route: "help",
+    href: PUBLIC_PATHS.help,
+    label: "Pomoc i wsparcie",
+    description: "Oficjalne informacje, organizacje wspierające rodziców i odpis aktu urodzenia.",
+    icon: HeartHandshake,
+    epic: "E9",
   },
   {
     route: "admin",

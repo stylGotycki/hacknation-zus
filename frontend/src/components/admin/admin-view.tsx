@@ -277,7 +277,7 @@ function ApplicationsTab({ token }: { token: string }) {
             <Badge variant={a.status === "decided" ? "default" : "secondary"}>{STATUS_LABEL[a.status]}</Badge>
           </div>
           <p className="text-xs text-muted-foreground">
-            Wnioskodawca: {a.owner_id} · adresat: {a.submitted_to === "zus" ? "ZUS" : "pracodawca"}
+            Wnioskodawca: {a.owner_id} · adresat: {{ zus: "ZUS", registry: "urząd stanu cywilnego" }[a.submitted_to ?? ""] ?? "pracodawca"}
           </p>
           {a.last_note && <p className="mt-1 text-sm">{a.last_note}</p>}
           <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto_auto]">

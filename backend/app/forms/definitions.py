@@ -28,7 +28,7 @@ class FormDefinition(BaseModel):
     code: str
     title_pl: str
     description_pl: str
-    submitted_to: Literal["employer", "zus"]
+    submitted_to: Literal["employer", "zus", "registry"]
     steps: list[FormStep]
 
 
@@ -163,6 +163,38 @@ FORMS: dict[str, FormDefinition] = {
                         label_pl="Załączniki (np. zaświadczenie „Za życiem”, zaświadczenie ze szpitala)",
                         type="textarea",
                     ),
+                ],
+            ),
+            FormStep(title_pl="Oświadczenie", fields=[_DECLARATION]),
+        ],
+    ),
+    "civil_registry_extract": FormDefinition(
+        code="civil_registry_extract",
+        title_pl="Wniosek o odpis aktu urodzenia dziecka",
+        description_pl="Odpis aktu urodzenia bywa potrzebny do wniosków o świadczenia. Składasz wniosek w urzędzie "
+        "stanu cywilnego (na gov.pl można to zrobić online). To symulacja – wniosek nie trafi do urzędu.",
+        submitted_to="registry",
+        steps=[
+            FormStep(
+                title_pl="Dane wnioskodawcy",
+                fields=[
+                    FormField(key="first_name", label_pl="Imię", required=True),
+                    FormField(key="last_name", label_pl="Nazwisko", required=True),
+                    FormField(key="pesel", label_pl="PESEL", required=True, hint_pl="11 cyfr"),
+                    FormField(key="relation", label_pl="Kim jesteś dla dziecka", type="select", required=True,
+                              options=[("parent", "Rodzic"), ("guardian", "Opiekun prawny")]),
+                ],
+            ),
+            FormStep(
+                title_pl="Akt urodzenia",
+                fields=[
+                    FormField(key="child_first_name", label_pl="Imię dziecka", required=True),
+                    FormField(key="child_last_name", label_pl="Nazwisko dziecka", required=True),
+                    FormField(key="child_date", label_pl="Data urodzenia dziecka", type="date", required=True),
+                    FormField(key="birth_place", label_pl="Miejsce urodzenia", required=True),
+                    FormField(key="extract_type", label_pl="Rodzaj odpisu", type="select", required=True,
+                              options=[("short", "Skrócony"), ("full", "Zupełny")]),
+                    FormField(key="purpose", label_pl="Cel (np. wniosek o zasiłek)"),
                 ],
             ),
             FormStep(title_pl="Oświadczenie", fields=[_DECLARATION]),
