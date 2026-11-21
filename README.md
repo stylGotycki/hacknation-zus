@@ -190,3 +190,20 @@ sytuację silnikiem i zapisuje wynik dla osi czasu.
 
 `/kreator` – pytania krok po kroku (sytuacja, data, szczegóły dziecka, mama, tata, plan urlopów), na końcu wynik z silnika
 (`/api/rules/evaluate`) i przejście do osi czasu lub kalkulatora. Używa tego samego formularza i `buildProfile` co kalkulator.
+
+## Oś czasu ze szczegółami (E5)
+
+`/os-czasu`: przy każdym urlopie i terminie przycisk „Szczegóły” rozwija kwoty, płatnika, miejsce złożenia wniosku,
+termin, dokumenty, uzasadnienie i podstawę prawną; filtr Oboje / Mama / Tata pokazuje gałąź wybranego rodzica.
+
+## Wnioski (E6)
+
+`/wnioski`: po wyliczeniu (kalkulator, kreator lub przykład) strona podpowiada wnioski do złożenia i wypełnia je danymi
+z wyniku. Pracownik dostaje wnioski o urlopy (macierzyński, rodzicielski, ojcowski – adresat pracodawca), pozostali
+rodzice – uproszczony ZAM do ZUS. Wersje robocze zapisują się same, wysłany wniosek ma historię statusów
+(`submitted` → `in_progress` → `decided`; kolejny etap symuluje przycisk w demo).
+
+- Definicje formularzy: `backend/app/forms/definitions.py` (klucze po angielsku, teksty po polsku).
+- API: `GET /api/forms`, `POST /api/applications/suggestions`, `GET|PUT|DELETE /api/drafts`,
+  `GET|POST /api/applications`, `POST /api/applications/{id}/advance`.
+- Tożsamość to na razie nagłówek `X-Owner-Id` z losowym identyfikatorem przeglądarki; mock mObywatel (E7) ją zastąpi.

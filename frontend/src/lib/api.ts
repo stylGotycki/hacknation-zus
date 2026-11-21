@@ -6,16 +6,31 @@
 const BASE =
   typeof window === "undefined" ? (process.env.INTERNAL_API_URL ?? "http://localhost:8000") : "";
 
+/** Stable anonymous id of this browser; the mObywatel mock (E7) will replace it with a real identity. */
+function ownerHeader(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    let id = localStorage.getItem("parent-guide:owner");
+    if (!id) {
+      id = `guest-${crypto.randomUUID()}`;
+      localStorage.setItem("parent-guide:owner", id);
+    }
+    return { "X-Owner-Id": id };
+  } catch {
+    return { "X-Owner-Id": "guest" };
+  }
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}/api${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: { "Content-Type": "application/json", ...ownerHeader(), ...init?.headers },
     cache: "no-store",
   });
   if (!res.ok) {
     throw new Error(`API ${res.status}: ${await res.text()}`);
   }
-  return res.json() as Promise<T>;
+  return res.status === 204 ? (undefined as T) : (res.json() as Promise<T>);
 }
 
 // --- Types mirroring backend schemas (keep in sync with /api/docs) -----------------------
@@ -245,3 +260,57 @@ export type Scenario = {
 export function listScenarios() {
   return api<Scenario[]>("/scenarios");
 }
+
+// --- Applications (E6) ----------------------------------------------------------------------
+
+export type FormField = {
+  key: string;
+  label_pl: string;
+  type: "text" | "date" | "number" | "select" | "checkbox" | "textarea";
+  required: boolean;
+  hint_pl: string | null;
+  options: [string, string][] | null;
+};
+export type FormStepDef = { title_pl: string; fields: FormField[] };
+export type FormDefinition = {
+  code: string;
+  title_pl: string;
+  description_pl: string;
+  submitted_to: "employer" | "zus";
+  steps: FormStepDef[];
+};
+export type FormData = Record<string, string | number | boolean | null>;
+export type Suggestion = {
+  form_code: string;
+  person: "mother" | "father";
+  title_pl: string;
+  submitted_to: "employer" | "zus";
+  deadline: string | null;
+  days_left: number | null;
+  prefill: FormData;
+};
+export type Draft = { id: number; form_code: string; step: number; data: FormData; updated_at: string | null };
+export type ApplicationStatus = "submitted" | "in_progress" | "decided";
+export type ApplicationRecord = {
+  id: number;
+  form_code: string;
+  title_pl: string;
+  status: ApplicationStatus;
+  submitted_to: "employer" | "zus" | null;
+  data: FormData;
+  history: { at: string; status: string; note: string }[];
+  created_at: string | null;
+};
+
+export const listForms = () => api<FormDefinition[]>("/forms");
+export const getSuggestions = (profile: FamilyProfile) =>
+  api<Suggestion[]>("/applications/suggestions", { method: "POST", body: JSON.stringify(profile) });
+export const listDrafts = () => api<Draft[]>("/drafts");
+export const saveDraft = (code: string, step: number, data: FormData) =>
+  api<Draft>(`/drafts/${code}`, { method: "PUT", body: JSON.stringify({ step, data }) });
+export const deleteDraft = (code: string) => api<void>(`/drafts/${code}`, { method: "DELETE" });
+export const listApplications = () => api<ApplicationRecord[]>("/applications");
+export const submitApplication = (form_code: string, data: FormData) =>
+  api<ApplicationRecord>("/applications", { method: "POST", body: JSON.stringify({ form_code, data }) });
+export const advanceApplication = (id: number) =>
+  api<ApplicationRecord>(`/applications/${id}/advance`, { method: "POST" });

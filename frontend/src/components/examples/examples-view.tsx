@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { evaluateFamily, listScenarios, type EvaluationResult, type Scenario } from "@/lib/api";
-import { saveLastForm, saveLastResult } from "@/lib/last-result";
+import { saveLastForm, saveLastProfile, saveLastResult } from "@/lib/last-result";
 import { PUBLIC_PATHS } from "@/lib/routes";
 
 export function ExamplesView() {
@@ -32,6 +32,7 @@ export function ExamplesView() {
       const evaluated = await evaluateFamily(scenario.profile);
       saveLastResult(evaluated);
       saveLastForm(null); // an example has no form answers to hand over
+      saveLastProfile(scenario.profile);
       setResult(evaluated);
       setActiveId(scenario.id);
       requestAnimationFrame(() =>

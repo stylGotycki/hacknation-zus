@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
 
-import { PagePlaceholder } from "@/components/page-placeholder";
+import { ApplicationsView } from "@/components/applications/applications-view";
 
 export const metadata: Metadata = { title: "Wnioski" };
 
 export default function ApplicationsPage() {
   return (
-    <PagePlaceholder
-      epic="E6"
-      title="Twoje wnioski"
-      description="Wypełniaj wnioski krok po kroku, zapisuj wersje robocze i śledź ich status."
-      planned={[
-        "ZUS ZAM, wnioski o urlop macierzyński, rodzicielski i ojcowski",
-        "Automatyczne zapisywanie wersji roboczych",
-        "Status: złożony, w ZUS / u pracodawcy, rozpatrzony",
-      ]}
-    />
+    <section className="flex flex-col gap-8">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Twoje wnioski</h1>
+        <p className="max-w-2xl text-muted-foreground">
+          Wypełniaj wnioski o urlopy i zasiłek krok po kroku. Dane z wyliczenia uzupełniamy za Ciebie, wersje
+          robocze zapisują się same, a status złożonych wniosków możesz śledzić tutaj. To symulacja – wnioski nie
+          trafiają do prawdziwego pracodawcy ani do ZUS.
+        </p>
+      </div>
+      <ApplicationsView />
+    </section>
   );
 }

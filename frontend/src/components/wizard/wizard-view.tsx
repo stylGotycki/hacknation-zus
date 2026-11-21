@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox, Field, Input } from "@/components/ui/form-controls";
 import { evaluateFamily, type EvaluationResult, type Situation } from "@/lib/api";
 import { toIsoDate } from "@/lib/format";
-import { saveLastForm, saveLastResult } from "@/lib/last-result";
+import { saveLastForm, saveLastProfile, saveLastResult } from "@/lib/last-result";
 import { PUBLIC_PATHS } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
@@ -71,9 +71,11 @@ export function WizardView() {
     setLoading(true);
     setError(null);
     try {
-      const evaluated = await evaluateFamily(buildProfile(form));
+      const profile = buildProfile(form);
+      const evaluated = await evaluateFamily(profile);
       saveLastResult(evaluated);
       saveLastForm(form);
+      saveLastProfile(profile);
       setResult(evaluated);
       setIndex(steps.length - 1);
     } catch (e) {

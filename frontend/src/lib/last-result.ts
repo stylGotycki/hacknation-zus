@@ -39,3 +39,23 @@ export function loadLastForm<T>(): T | null {
     return null;
   }
 }
+
+const PROFILE_KEY = "parent-guide:last-profile";
+
+/** The profile behind the last result, so the applications page can suggest and prefill forms. */
+export function saveLastProfile(profile: unknown): void {
+  try {
+    sessionStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  } catch {
+    // Without storage the applications page lets the user pick a form by hand.
+  }
+}
+
+export function loadLastProfile<T>(): T | null {
+  try {
+    const raw = sessionStorage.getItem(PROFILE_KEY);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}

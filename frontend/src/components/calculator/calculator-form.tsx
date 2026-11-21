@@ -15,7 +15,7 @@ import {
   type Situation,
 } from "@/lib/api";
 import { toIsoDate } from "@/lib/format";
-import { loadLastForm, saveLastForm, saveLastResult } from "@/lib/last-result";
+import { loadLastForm, saveLastForm, saveLastProfile, saveLastResult } from "@/lib/last-result";
 
 import { CalculatorResults } from "./calculator-results";
 
@@ -309,9 +309,11 @@ export function CalculatorForm() {
     setLoading(true);
     setError(null);
     try {
-      const evaluated = await evaluateFamily(buildProfile(form));
+      const profile = buildProfile(form);
+      const evaluated = await evaluateFamily(profile);
       saveLastResult(evaluated);
       saveLastForm(form);
+      saveLastProfile(profile);
       setResult(evaluated);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Nieznany błąd";
