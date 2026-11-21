@@ -218,3 +218,17 @@ Wszystko to symulacja na danych przykładowych, wyprowadzonych z 12 person (E3).
   (na dzień powstania prawa do świadczenia), lista e-ZLA, pytanie do PUE/eZUS oraz „Policz uprawnienia z danych ZUS”.
 - API: `GET /api/mock/citizens`, `POST /api/mock/mobywatel/login`, `GET /api/mock/zus/{id}/insurance|debt-certificate|ezla|profile`,
   `POST /api/mock/pue/question`. Kod: `backend/app/mocks/data.py`, `backend/app/api/mocks.py`.
+
+## Panel administratora (E8)
+
+`/admin` (hasło: zmienna `ADMIN_TOKEN`, domyślnie `admin` – zmień poza środowiskiem lokalnym).
+
+- **Parametry prawne:** wyszukiwanie, historia wersji, „Zmień” = nowa wersja od wybranej daty (musi być późniejsza niż
+  obecna). Poprzednia wersja kończy się dzień wcześniej, dawne sprawy liczą się według dawnych przepisów, a kalkulator
+  korzysta z nowej wartości od razu. Nowa wartość musi mieć ten sam typ i klucze co poprzednia. Wersje dodane w panelu
+  można usunąć (poprzednia otwiera się ponownie); wersje z seedu zostają.
+- **Seed a panel:** klucz, który ma wersję spoza seedu, jest pomijany przy starcie – seed nie nadpisuje zmian administratora.
+- **Wnioski:** lista wszystkich złożonych wniosków i zmiana statusu z notatką (obieg po stronie płatnika).
+- API: `GET /api/admin/parameters`, `POST /api/admin/parameters/{key}/versions`,
+  `DELETE /api/admin/parameters/{key}/versions/{valid_from}`, `GET /api/admin/applications`,
+  `POST /api/admin/applications/{id}/status` (nagłówek `X-Admin-Token`).

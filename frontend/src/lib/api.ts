@@ -373,3 +373,42 @@ export const zusEzla = (id: string) => api<{ records: EzlaRecord[]; note_pl: str
 export const zusProfile = (id: string) => api<FamilyProfile>(`/mock/zus/${id}/profile`);
 export const pueQuestion = (citizen_id: string, subject: string, text: string) =>
   api<PueAnswer>("/mock/pue/question", { method: "POST", body: JSON.stringify({ citizen_id, subject, text }) });
+
+// --- Admin panel (E8) -------------------------------------------------------------------------
+
+export type AdminParameter = LegalParameter & { from_seed: boolean; current: boolean };
+export type AdminApplication = {
+  id: number;
+  owner_id: string;
+  form_code: string;
+  title_pl: string;
+  status: ApplicationStatus;
+  submitted_to: string | null;
+  created_at: string | null;
+  last_note: string | null;
+};
+
+const adminHeaders = (token: string) => ({ "X-Admin-Token": token });
+export const adminCheck = (token: string) => api<{ ok: boolean }>("/admin/check", { headers: adminHeaders(token) });
+export const adminParameters = (token: string) =>
+  api<AdminParameter[]>("/admin/parameters", { headers: adminHeaders(token) });
+export const adminAddVersion = (
+  token: string,
+  key: string,
+  body: { value: unknown; valid_from: string; description_pl?: string; legal_basis?: string },
+) =>
+  api<LegalParameter>(`/admin/parameters/${key}/versions`, {
+    method: "POST",
+    headers: adminHeaders(token),
+    body: JSON.stringify(body),
+  });
+export const adminDeleteVersion = (token: string, key: string, validFrom: string) =>
+  api<void>(`/admin/parameters/${key}/versions/${validFrom}`, { method: "DELETE", headers: adminHeaders(token) });
+export const adminApplications = (token: string) =>
+  api<AdminApplication[]>("/admin/applications", { headers: adminHeaders(token) });
+export const adminSetStatus = (token: string, id: number, status: ApplicationStatus, note?: string) =>
+  api<{ status: string }>(`/admin/applications/${id}/status`, {
+    method: "POST",
+    headers: adminHeaders(token),
+    body: JSON.stringify({ status, note: note || null }),
+  });

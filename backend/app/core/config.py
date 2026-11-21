@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://app:app@localhost:5432/parent_guide"
     # Seed legal parameters on startup, so `make up` always gives a usable database.
     seed_on_startup: bool = True
+    # Password of the admin panel (X-Admin-Token header). Change it outside local development.
+    admin_token: str = "admin"
 
 
 @lru_cache
