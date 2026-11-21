@@ -15,7 +15,7 @@ import {
   type Situation,
 } from "@/lib/api";
 import { toIsoDate } from "@/lib/format";
-import { saveLastResult } from "@/lib/last-result";
+import { loadLastForm, saveLastForm, saveLastResult } from "@/lib/last-result";
 
 import { CalculatorResults } from "./calculator-results";
 
@@ -28,7 +28,7 @@ const EMPLOYMENT_LABELS: Record<EmploymentType, string> = {
   other: "Inna sytuacja",
 };
 
-type ParentForm = {
+export type ParentForm = {
   employment: EmploymentType;
   voluntary: boolean;
   base: string;
@@ -37,7 +37,7 @@ type ParentForm = {
   workPercent: string;
 };
 
-type FormState = {
+export type FormState = {
   situation: Situation;
   born: boolean;
   date: string;
@@ -79,7 +79,7 @@ const emptyParent = (base: string): ParentForm => ({
   workPercent: "0",
 });
 
-const INITIAL: FormState = {
+export const INITIAL: FormState = {
   situation: "birth",
   born: false,
   date: "",
@@ -189,7 +189,7 @@ export function buildProfile(form: FormState): FamilyProfile {
   };
 }
 
-function ParentFields({
+export function ParentFields({
   title,
   value,
   onChange,
@@ -289,6 +289,12 @@ export function CalculatorForm() {
 
   // Default date is set after mount so server and client render the same markup.
   useEffect(() => {
+    // Answers handed over from the wizard take precedence over the defaults.
+    const handedOver = loadLastForm<FormState>();
+    if (handedOver) {
+      setForm({ ...INITIAL, ...handedOver });
+      return;
+    }
     const inTwoMonths = new Date();
     inTwoMonths.setDate(inTwoMonths.getDate() + 60);
     setForm((f) => (f.date ? f : { ...f, date: toIsoDate(inTwoMonths) }));
@@ -305,6 +311,7 @@ export function CalculatorForm() {
     try {
       const evaluated = await evaluateFamily(buildProfile(form));
       saveLastResult(evaluated);
+      saveLastForm(form);
       setResult(evaluated);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Nieznany błąd";

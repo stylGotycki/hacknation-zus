@@ -185,3 +185,8 @@ Opis i linki (ELI, API Sejmu, zus.pl, gov.pl) w [`docs/zrodla-prawne.md`](docs/z
 
 Dwanaście person w `backend/app/seed/scenarios/` (`GET /api/scenarios`), strona `/przyklady` liczy wybraną
 sytuację silnikiem i zapisuje wynik dla osi czasu.
+
+## Kreator (E4)
+
+`/kreator` – pytania krok po kroku (sytuacja, data, szczegóły dziecka, mama, tata, plan urlopów), na końcu wynik z silnika
+(`/api/rules/evaluate`) i przejście do osi czasu lub kalkulatora. Używa tego samego formularza i `buildProfile` co kalkulator.

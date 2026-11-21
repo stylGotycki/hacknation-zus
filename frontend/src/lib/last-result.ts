@@ -19,3 +19,23 @@ export function loadLastResult(): EvaluationResult | null {
     return null;
   }
 }
+
+const FORM_KEY = "parent-guide:last-form";
+
+/** The calculator form state, so the wizard can hand its answers over to the calculator. */
+export function saveLastForm(form: unknown): void {
+  try {
+    sessionStorage.setItem(FORM_KEY, JSON.stringify(form));
+  } catch {
+    // Storage can be blocked; the calculator then starts with its defaults.
+  }
+}
+
+export function loadLastForm<T>(): T | null {
+  try {
+    const raw = sessionStorage.getItem(FORM_KEY);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
