@@ -84,8 +84,11 @@ def resolve_plan(
             father_parental = total
             reserved = 0
         elif both:
+            from_blocks = sum(b.weeks for b in plan.parental_blocks or [] if b.person == "father")
             father_parental = (
-                plan.parental_weeks_father if plan.parental_weeks_father is not None else reserved
+                plan.parental_weeks_father
+                if plan.parental_weeks_father is not None
+                else (from_blocks or reserved)
             )
             if not reserved <= father_parental <= total - reserved:
                 raise PlanError(
@@ -100,6 +103,30 @@ def resolve_plan(
         else:
             father_parental, reserved = total, 0
 
+        if plan.parental_blocks:
+            if not both:
+                father_blocks = [b for b in plan.parental_blocks if b.person == "father"]
+                mother_blocks = [b for b in plan.parental_blocks if b.person == "mother"]
+                if (father_blocks and profile.father is None) or (mother_blocks and profile.mother is None):
+                    raise PlanError("parental_blocks refer to a parent missing from the profile")
+            by_person = {"mother": 0.0, "father": 0.0}
+            counts = {"mother": 0, "father": 0}
+            for block in plan.parental_blocks:
+                by_person[block.person] += block.weeks
+                counts[block.person] += 1
+            if abs(by_person["father"] - father_parental) > 1e-6 or abs(
+                by_person["mother"] - mother_parental
+            ) > 1e-6:
+                raise PlanError(
+                    "Sum of parental_blocks must match the weeks of each parent "
+                    f"(mother {mother_parental}, father {father_parental})"
+                )
+            plan = plan.model_copy(
+                update={
+                    "parental_parts_mother": max(counts["mother"], 1),
+                    "parental_parts_father": max(counts["father"], 1),
+                }
+            )
         max_parts = params.integer("parental_max_parts")
         for parts in (plan.parental_parts_mother, plan.parental_parts_father):
             if parts > max_parts:
@@ -119,6 +146,17 @@ def resolve_plan(
 
     # --- Paternity ---------------------------------------------------------------------------
     max_paternity_parts = params.integer("paternity_max_parts")
+    if plan.paternity_starts:
+        if ent.paternity_deadline is not None:
+            for start in plan.paternity_starts:
+                if start < ctx_event(profile):
+                    raise PlanError("Paternity leave cannot start before the birth of the child")
+                if start > ent.paternity_deadline:
+                    raise PlanError(
+                        f"Paternity leave must start by {ent.paternity_deadline.isoformat()} "
+                        "(deadline from the birth/adoption)"
+                    )
+        plan = plan.model_copy(update={"paternity_parts": len(plan.paternity_starts)})
     if plan.paternity_parts > max_paternity_parts:
         raise PlanError(f"Paternity leave can be split into at most {max_paternity_parts} parts")
     min_part = params.integer("paternity_min_part_days")
@@ -138,7 +176,15 @@ def resolve_plan(
         father_work_fraction=fractions["father"],
         paternity_parts=plan.paternity_parts,
         notes_pl=notes,
+        parental_blocks=list(plan.parental_blocks or []),
+        paternity_starts=sorted(plan.paternity_starts or []),
     )
+
+
+def ctx_event(profile) -> date:
+    event = profile.child.event_date
+    assert event is not None
+    return event
 
 
 def _rate_for(kind: str, reserved_for_other: bool, averaged: bool, params: Params) -> float:
@@ -270,8 +316,40 @@ def build_periods(ctx: Context, averaged: bool) -> list[LeavePeriod]:
             weeks_to_days(plan.supplementary),
         )
 
+    # --- Parental: explicit parts --------------------------------------------------------------
+    if plan.parental_blocks:
+        reserved_left = {
+            "father": round(weeks_to_days(plan.father_reserved)) if averaged else 0,
+            "mother": 0,
+        }
+        numbering = {"mother": 0, "father": 0}
+        own_end: dict[str, date] = {}  # parents may take parental leave at the same time
+        for block in plan.parental_blocks:
+            person = block.person
+            if not ctx.insured(person):
+                continue
+            fraction = plan.mother_work_fraction if person == "mother" else plan.father_work_fraction
+            days = round(weeks_to_days(block.weeks) / (1 - fraction))
+            numbering[person] += 1
+            start = block.start or own_end.get(person, cursor)
+            if start < own_end.get(person, event):
+                raise PlanError(f"Parental leave part of the {person} overlaps an earlier block")
+            label = f"Urlop rodzicielski – część {numbering[person]}"
+            reserved_days = min(reserved_left[person], days)
+            if reserved_days:
+                cursor = b.add(
+                    person, "parental", label + " (nieprzenoszalna)", start, reserved_days,
+                    reserved_for_other=True, work_fraction=fraction,
+                )
+                reserved_left[person] -= reserved_days
+                days -= reserved_days
+                start = cursor
+            if days > 0:
+                cursor = b.add(person, "parental", label, start, days, work_fraction=fraction)
+            own_end[person] = max(own_end.get(person, event), cursor)
+            cursor = max(cursor, own_end[person])
     # --- Parental ----------------------------------------------------------------------------
-    for person, weeks, fraction in (
+    for person, weeks, fraction in () if plan.parental_blocks else (
         ("mother", plan.mother_parental, plan.mother_work_fraction),
         ("father", plan.father_parental, plan.father_work_fraction),
     ):
@@ -311,7 +389,15 @@ def build_periods(ctx: Context, averaged: bool) -> list[LeavePeriod]:
     # --- Paternity ---------------------------------------------------------------------------
     if ent.paternity_days and ctx.insured("father") and "father" in ctx.parents:
         days = ent.paternity_days
-        if plan.paternity_parts == 1:
+        if plan.paternity_starts:
+            starts = plan.paternity_starts
+            n = len(starts)
+            chunk = days // n
+            for i, start in enumerate(starts):
+                part = chunk if i < n - 1 else days - chunk * (n - 1)
+                label = "Urlop ojcowski" if n == 1 else f"Urlop ojcowski – część {i + 1}"
+                b.add("father", "paternity", label, start, part)
+        elif plan.paternity_parts == 1:
             b.add("father", "paternity", "Urlop ojcowski", event, days)
         else:
             first = days // 2

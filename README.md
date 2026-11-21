@@ -166,3 +166,17 @@ Seed: `backend/app/seed/parameters_2026.py` (dla przykładu jest też płaca min
 
 Next.js (App Router, TypeScript, Tailwind CSS, shadcn/ui) · FastAPI · SQLAlchemy 2 ·
 PostgreSQL 16 · nginx · Docker Compose.
+
+
+## Źródła danych prawnych
+
+Opis i linki (ELI, API Sejmu, zus.pl, gov.pl) w [`docs/zrodla-prawne.md`](docs/zrodla-prawne.md).
+
+## Rozszerzone obliczenia silnika
+
+- zasiłek opiekuńczy: limity 60/30/14 dni, limit całej rodziny, wiek dziecka, inny domownik, kwota za dni (`care`),
+- zasiłek chorobowy w ciąży: wynagrodzenie chorobowe 33/14 dni, zasiłek ZUS, okres 270 dni, kwota za okres,
+- urlop rodzicielski w częściach z datami (`plan.parental_blocks`, do 5 części na rodzica, rodzice mogą korzystać równolegle),
+- urlop ojcowski z datami startu (`plan.paternity_starts`, termin 12 miesięcy),
+- podstawa z historii miesięcy (`monthly_bases`, także krótsza niż 12 miesięcy),
+- wyjątki ubezpieczenia: urlop wychowawczy, umowa na czas określony przedłużona do porodu.

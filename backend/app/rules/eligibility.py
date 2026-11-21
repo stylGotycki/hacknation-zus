@@ -41,6 +41,23 @@ def insurance_on(parent: ParentProfile, event_date: date) -> Insurance:
         }.get(parent.employment, "Brak ubezpieczenia chorobowego w dniu porodu.")
         return Insurance(False, [reason])
 
+    if parent.on_childcare_leave:
+        return Insurance(
+            True,
+            ["Urodzenie w czasie urlopu wychowawczego daje prawo do zasiłku macierzyńskiego (art. 29 ust. 1)."],
+        )
+    if (
+        parent.fixed_term_contract
+        and parent.insurance_ended_on is not None
+        and parent.insurance_ended_on < event_date
+        and parent.insurance_ended_on >= add_months(event_date, -6)
+    ):
+        return Insurance(
+            True,
+            ["Umowa na czas określony przedłuża się do dnia porodu, jeśli skończyłaby się po "
+             "3. miesiącu ciąży (Kodeks pracy, art. 177 § 3)."],
+        )
+
     if parent.insurance_ended_on is not None and parent.insurance_ended_on < event_date:
         reasons = [
             f"Ubezpieczenie chorobowe ustało {parent.insurance_ended_on:%d.%m.%Y}, "

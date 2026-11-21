@@ -636,3 +636,130 @@ def test_benefit_carries_days_left():
 def test_deadlines_sorted_by_date():
     due = [d.due for d in run(two_parents(child={"due_date": "2027-03-01"})).deadlines]
     assert due == sorted(due)
+
+
+# --- Extended calculations ----------------------------------------------------------------
+
+
+def test_base_from_monthly_history_shorter_than_year():
+    result = run(profile(mother=employee(average_monthly_base=None, monthly_bases=[5000, 6000, 7000])))
+    base = result.bases[0]
+    assert base.gross_base == 6000
+    assert base.months_used == 3
+
+
+def test_pregnancy_sickness_splits_employer_and_zus_days():
+    mother = employee(
+        sick_leave_start="2026-10-01", sick_leave_end="2026-11-09", on_pregnancy_sick_leave=True
+    )
+    result = run(
+        FamilyProfile.model_validate({"child": {"due_date": "2027-02-01"}, "mother": mother})
+    )
+    sick = benefit(result, "sickness_pregnancy")
+    assert sick.days == 40
+    assert sick.employer_days == 33
+    assert sick.zus_days == 7
+    assert sick.total_gross == pytest.approx(40 * sick.monthly_gross / 30, abs=0.01)
+
+
+def test_pregnancy_sickness_over_50_employer_pays_14_days():
+    mother = employee(
+        sick_leave_start="2026-10-01",
+        sick_leave_end="2026-10-20",
+        on_pregnancy_sick_leave=True,
+        age_over_50=True,
+        sick_days_used_this_year=4,
+    )
+    result = run(
+        FamilyProfile.model_validate({"child": {"due_date": "2027-02-01"}, "mother": mother})
+    )
+    sick = benefit(result, "sickness_pregnancy")
+    assert sick.employer_days == 10
+    assert sick.zus_days == 10
+
+
+def care_profile(**care):
+    return profile(care={"days_planned": 10, **care})
+
+
+def test_care_allowance_amount_for_days():
+    b = benefit(run(care_profile()), "care_allowance_mother")
+    assert b.status == "eligible"
+    assert b.days == 10
+    assert b.total_gross == pytest.approx(10 * b.monthly_gross / 30, abs=0.01)
+
+
+def test_care_allowance_family_cap_limits_days():
+    b = benefit(run(care_profile(days_used_this_year=55)), "care_allowance_mother")
+    assert b.days == 5
+
+
+def test_care_allowance_blocked_by_other_household_member():
+    b = benefit(run(care_profile(child_age_years=5, other_household_member_available=True)), "care_allowance_mother")
+    assert b.status == "not_eligible"
+    b2 = benefit(run(care_profile(child_age_years=1, other_household_member_available=True)), "care_allowance_mother")
+    assert b2.status == "eligible"  # sick child under 2
+
+
+def test_care_allowance_limits_by_age():
+    older = benefit(run(care_profile(child_age_years=15, days_planned=30)), "care_allowance_mother")
+    assert older.days == 14
+    disabled = benefit(
+        run(care_profile(child_age_years=15, child_disabled=True, days_planned=50)),
+        "care_allowance_mother",
+    )
+    assert disabled.days == 30
+    healthy = benefit(
+        run(care_profile(situation="healthy_child", child_age_years=9)), "care_allowance_mother"
+    )
+    assert healthy.status == "not_eligible"
+
+
+def test_parental_blocks_with_dates():
+    prof = profile(
+        father=employee(),
+        plan={
+            "parental_blocks": [
+                {"person": "mother", "weeks": 10},
+                {"person": "father", "weeks": 9, "start": "2027-06-01"},
+                {"person": "mother", "weeks": 22, "start": "2027-09-01"},
+                {"person": "father", "weeks": 0.5 + 0, "start": "2028-01-01"},
+            ]
+        },
+    )
+    with pytest.raises(PlanError):
+        run(prof)
+    prof = profile(
+        father=employee(),
+        plan={
+            "parental_blocks": [
+                {"person": "mother", "weeks": 22},
+                {"person": "father", "weeks": 9, "start": "2027-06-01"},
+                {"person": "mother", "weeks": 10, "start": "2027-09-01"},
+            ]
+        },
+    )
+    result = run(prof)
+    parental = [p for p in result.timeline if p.kind == "parental"]
+    assert len(parental) == 3
+    assert any(p.start == date(2027, 6, 1) for p in parental)
+
+
+def test_paternity_start_dates_validated():
+    prof = profile(father=employee(), plan={"paternity_starts": ["2026-12-01", "2027-03-01"]})
+    result = run(prof)
+    parts = periods(result, "father", "paternity")
+    assert [p.start for p in parts] == [date(2026, 12, 1), date(2027, 3, 1)]
+    late = profile(father=employee(), plan={"paternity_starts": ["2028-01-01"]})
+    with pytest.raises(PlanError):
+        run(late)
+
+
+def test_fixed_term_contract_extended_to_birth_keeps_insurance():
+    mother = employee(insurance_ended_on="2026-08-01", fixed_term_contract=True)
+    assert benefit(run(profile(mother=mother)), "maternity_allowance_mother").status == "eligible"
+
+
+def test_birth_during_childcare_leave_keeps_right():
+    mother = employee(insurance_ended_on="2026-01-01", on_childcare_leave=True)
+    assert benefit(run(profile(mother=mother)), "maternity_allowance_mother").status == "eligible"

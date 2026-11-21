@@ -56,6 +56,18 @@ type FormState = {
   toFatherWeeks: string;
   fatherParentalWeeks: string;
   averagedApplied: boolean;
+  careOn: boolean;
+  careSituation: "sick_child" | "healthy_child" | "family_member";
+  careAge: string;
+  careDisabled: boolean;
+  careOtherAdult: boolean;
+  careDays: string;
+  careUsed: string;
+  sickStart: string;
+  sickEnd: string;
+  sickUsed: string;
+  over50: boolean;
+  history: string;
 };
 
 const emptyParent = (base: string): ParentForm => ({
@@ -86,6 +98,18 @@ const INITIAL: FormState = {
   toFatherWeeks: "0",
   fatherParentalWeeks: "9",
   averagedApplied: false,
+  careOn: false,
+  careSituation: "sick_child",
+  careAge: "1",
+  careDisabled: false,
+  careOtherAdult: false,
+  careDays: "7",
+  careUsed: "0",
+  sickStart: "",
+  sickEnd: "",
+  sickUsed: "0",
+  over50: false,
+  history: "",
 };
 
 const num = (value: string): number | null => {
@@ -104,6 +128,15 @@ function parentProfile(form: ParentForm): ParentProfile {
     contribution_debt: num(form.debt) ?? 0,
     planned_work_fraction: isEmployee ? (num(form.workPercent) ?? 0) / 100 : 0,
   };
+}
+
+function parseHistory(text: string): number[] | null {
+  const values = text
+    .split(/[\s;]+/)
+    .map((v) => num(v))
+    .filter((v): v is number => v !== null)
+    .slice(0, 12);
+  return values.length ? values : null;
 }
 
 export function buildProfile(form: FormState): FamilyProfile {
@@ -127,7 +160,25 @@ export function buildProfile(form: FormState): FamilyProfile {
   }
   return {
     child,
-    mother: parentProfile(form.mother),
+    mother: {
+      ...parentProfile(form.mother),
+      sick_leave_start: form.sickStart || null,
+      sick_leave_end: form.sickEnd || null,
+      on_pregnancy_sick_leave: Boolean(form.sickStart && form.sickEnd),
+      sick_days_used_this_year: num(form.sickUsed) ?? 0,
+      age_over_50: form.over50,
+      monthly_bases: parseHistory(form.history),
+    },
+    care: form.careOn
+      ? {
+          situation: form.careSituation,
+          child_age_years: num(form.careAge) ?? 1,
+          child_disabled: form.careDisabled,
+          other_household_member_available: form.careOtherAdult,
+          days_planned: num(form.careDays) ?? 7,
+          days_used_this_year: num(form.careUsed) ?? 0,
+        }
+      : null,
     father: form.withFather ? parentProfile(form.father) : null,
     averaged_rate_applied_on: form.averagedApplied && isBirth ? form.date : null,
     plan: {
@@ -454,6 +505,81 @@ export function CalculatorForm() {
                 onChange={(e) => set("averagedApplied", e.target.checked)}
                 className="sm:col-span-2"
               />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Dodatkowe obliczenia (opcjonalnie)</CardTitle>
+            <CardDescription>
+              Zwolnienie w ciąży, historia wynagrodzeń i zasiłek opiekuńczy.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Wynagrodzenia mamy z ostatnich miesięcy (brutto)"
+              hint="Oddziel spacją, do 12 wartości. Zastępuje średnią; działa też przy krótszej historii."
+              className="sm:col-span-2"
+            >
+              <Input
+                value={form.history}
+                onChange={(e) => set("history", e.target.value)}
+                placeholder="np. 5500 6000 6000 6200"
+              />
+            </Field>
+            <Field label="Zwolnienie w ciąży (e-ZLA kod B) – od">
+              <Input type="date" value={form.sickStart} onChange={(e) => set("sickStart", e.target.value)} />
+            </Field>
+            <Field label="Zwolnienie w ciąży – do">
+              <Input type="date" value={form.sickEnd} onChange={(e) => set("sickEnd", e.target.value)} />
+            </Field>
+            <Field label="Dni chorobowego już opłaconych przez pracodawcę w tym roku">
+              <Input inputMode="numeric" value={form.sickUsed} onChange={(e) => set("sickUsed", e.target.value)} />
+            </Field>
+            <Checkbox
+              label="Mama ukończyła 50 lat w poprzednim roku (pracodawca płaci 14 dni zamiast 33)"
+              checked={form.over50}
+              onChange={(e) => set("over50", e.target.checked)}
+            />
+            <Checkbox
+              label="Policz zasiłek opiekuńczy"
+              checked={form.careOn}
+              onChange={(e) => set("careOn", e.target.checked)}
+              className="sm:col-span-2"
+            />
+            {form.careOn && (
+              <>
+                <Field label="Kogo dotyczy opieka">
+                  <Select
+                    value={form.careSituation}
+                    onChange={(e) => set("careSituation", e.target.value as FormState["careSituation"])}
+                  >
+                    <option value="sick_child">Chore dziecko</option>
+                    <option value="healthy_child">Zdrowe dziecko (np. zamknięty żłobek)</option>
+                    <option value="family_member">Inny chory członek rodziny</option>
+                  </Select>
+                </Field>
+                <Field label="Wiek dziecka (lata)">
+                  <Input inputMode="decimal" value={form.careAge} onChange={(e) => set("careAge", e.target.value)} />
+                </Field>
+                <Field label="Planowana liczba dni opieki">
+                  <Input inputMode="numeric" value={form.careDays} onChange={(e) => set("careDays", e.target.value)} />
+                </Field>
+                <Field label="Dni zasiłku opiekuńczego już wykorzystane w tym roku (cała rodzina)">
+                  <Input inputMode="numeric" value={form.careUsed} onChange={(e) => set("careUsed", e.target.value)} />
+                </Field>
+                <Checkbox
+                  label="Dziecko jest niepełnosprawne"
+                  checked={form.careDisabled}
+                  onChange={(e) => set("careDisabled", e.target.checked)}
+                />
+                <Checkbox
+                  label="W domu jest inna osoba, która może się zająć opieką"
+                  checked={form.careOtherAdult}
+                  onChange={(e) => set("careOtherAdult", e.target.checked)}
+                />
+              </>
             )}
           </CardContent>
         </Card>

@@ -9,7 +9,7 @@ from datetime import date
 
 BENEFITS_ACT = (
     "Ustawa z 25.06.1999 o świadczeniach pieniężnych z ubezpieczenia społecznego "
-    "w razie choroby i macierzyństwa (ustawa zasiłkowa)"
+    "w razie choroby i macierzyństwa (ustawa zasiłkowa, t.j. Dz.U. 2026 poz. 854)"
 )
 LABOR_CODE = "Kodeks pracy"
 MIN_WAGE_REG = "Rozporządzenie Rady Ministrów w sprawie minimalnego wynagrodzenia za pracę"
@@ -299,6 +299,28 @@ PARAMETERS: list[dict] = [
         "Wniosek o świadczenie rodzicielskie złożony w ciągu tylu miesięcy od porodu daje prawo "
         "do świadczenia od dnia porodu; później – od miesiąca złożenia wniosku.",
         "Ustawa o świadczeniach rodzinnych – do weryfikacji artykułu",
+    ),
+    p(
+        "additional_care_allowance_weeks",
+        8,
+        "Dodatkowy zasiłek opiekuńczy ojca (matka w szpitalu, niezdolna do samodzielnej "
+        "egzystencji albo porzuciła dziecko): do tylu tygodni, nie dłużej niż do ukończenia "
+        "przez dziecko 8 tygodni życia.",
+        f"{BENEFITS_ACT}, art. 32a",
+    ),
+    p(
+        "employer_sickness_paid_days_over_50",
+        14,
+        "Pracownik, który ukończył 50 lat (w roku poprzedzającym niezdolność), ma wynagrodzenie "
+        "chorobowe od pracodawcy tylko za pierwsze 14 dni w roku, nie 33.",
+        f"{LABOR_CODE}, art. 92",
+    ),
+    p(
+        "gestation_months_for_contract_extension",
+        3,
+        "Umowa na czas określony lub okres próbny, która skończyłaby się po upływie tylu miesięcy "
+        "ciąży, jest przedłużana do dnia porodu.",
+        f"{LABOR_CODE}, art. 177 § 3",
     ),
     # --- Net amount estimate (informational only) ------------------------------------------------
     p(

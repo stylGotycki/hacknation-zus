@@ -61,7 +61,25 @@ export type ParentProfile = {
   base_raised_in_pregnancy?: boolean;
   planned_work_fraction?: number;
   on_pregnancy_sick_leave?: boolean;
+  sick_leave_start?: string | null;
+  sick_leave_end?: string | null;
+  sick_days_used_this_year?: number;
+  age_over_50?: boolean;
+  monthly_bases?: number[] | null;
+  on_childcare_leave?: boolean;
 };
+
+export type CareProfile = {
+  situation?: "sick_child" | "healthy_child" | "family_member";
+  child_age_years?: number;
+  child_disabled?: boolean;
+  other_household_member_available?: boolean;
+  days_planned?: number;
+  days_used_this_year?: number;
+  days_used_for_family_members?: number;
+};
+
+export type ParentalBlock = { person: "mother" | "father"; weeks: number; start?: string | null };
 
 export type ChildProfile = {
   situation?: Situation;
@@ -90,6 +108,8 @@ export type Plan = {
   paternity_parts?: number;
   use_supplementary_leave?: boolean;
   supplementary_taken_by?: "mother" | "father";
+  parental_blocks?: ParentalBlock[] | null;
+  paternity_starts?: string[] | null;
 };
 
 export type FamilyProfile = {
@@ -99,6 +119,7 @@ export type FamilyProfile = {
   mother_cannot_care?: "hospital" | "disabled" | "death" | "abandoned" | null;
   averaged_rate_applied_on?: string | null;
   plan?: Plan;
+  care?: CareProfile | null;
 };
 
 export type BenefitStatus = "eligible" | "conditional" | "not_eligible" | "info";
@@ -119,6 +140,8 @@ export type BenefitResult = {
   total_gross: number | null;
   total_net_estimate: number | null;
   raised_to_minimum: boolean;
+  employer_days?: number | null;
+  zus_days?: number | null;
   start: string | null;
   end: string | null;
   payer: "employer" | "zus" | "municipality" | null;

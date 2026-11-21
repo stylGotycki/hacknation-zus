@@ -15,6 +15,12 @@ def calculation_base(person: Person, parent: ParentProfile, params: Params) -> C
     """
     deduction = params.number("social_contribution_deduction")
     average = parent.average_monthly_base
+    months_used: int | None = None
+    if parent.monthly_bases:
+        # Month-by-month history wins over a single average; fewer than 12 months are averaged
+        # over the months actually available.
+        months_used = len(parent.monthly_bases)
+        average = round(sum(parent.monthly_bases) / months_used, 2)
 
     if average is None:
         return CalculationBase(
@@ -45,7 +51,14 @@ def calculation_base(person: Person, parent: ParentProfile, params: Params) -> C
         gross_base=round(gross, 2),
         net_base=round(gross * (1 - deduction), 2),
         minimum_wage_applied=min_applied,
-        note_pl=note,
+        months_used=months_used,
+        note_pl=note
+        + (
+            f" Średnia z {months_used} mies. historii wynagrodzeń"
+            + (" (krócej niż 12 miesięcy – liczone z dostępnych miesięcy)." if months_used < 12 else ".")
+            if months_used
+            else ""
+        ),
     )
 
 

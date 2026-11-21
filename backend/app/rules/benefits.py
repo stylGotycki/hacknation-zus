@@ -7,6 +7,7 @@ from app.rules.dates import weeks_to_days
 from app.rules.eligibility import payer_for
 from app.rules.models import (
     BenefitResult,
+    CareSituation,
     EmploymentType,
     InsuranceKind,
     LeavePeriod,
@@ -325,6 +326,28 @@ def pregnancy_benefits(ctx: Context) -> list[BenefitResult]:
     else:
         docs.append("Wniosek ZAS-53 o zasiłek chorobowy – składasz sama do ZUS")
 
+    period_days = employer_days = zus_days = None
+    total = None
+    if mother.sick_leave_start and mother.sick_leave_end and monthly is not None:
+        raw_days = (mother.sick_leave_end - mother.sick_leave_start).days + 1
+        period_days = min(raw_days, params.integer("sickness_benefit_period_days"))
+        if mother.employment == EmploymentType.EMPLOYEE:
+            cap = params.integer(
+                "employer_sickness_paid_days_over_50" if mother.age_over_50 else "sickness_employer_paid_days"
+            )
+            employer_days = min(period_days, max(0, cap - mother.sick_days_used_this_year))
+            zus_days = period_days - employer_days
+            reasons.append(
+                f"Za {employer_days} dni zapłaci pracodawca (wynagrodzenie chorobowe, limit {cap} dni "
+                f"w roku{', po 50. roku życia' if mother.age_over_50 else ''}), "
+                f"za {zus_days} dni zasiłek z ZUS."
+            )
+        else:
+            zus_days = period_days
+        total = round(period_days * monthly / params.integer("benefit_days_per_month"), 2)
+        if raw_days > period_days:
+            reasons.append(f"Okres zasiłkowy obejmuje najwyżej {period_days} dni – dalsze dni nie są płatne.")
+
     out.append(
         BenefitResult(
             code="sickness_pregnancy",
@@ -337,7 +360,15 @@ def pregnancy_benefits(ctx: Context) -> list[BenefitResult]:
             rate=rate,
             monthly_gross=monthly,
             monthly_net_estimate=net_estimate(monthly, params) if monthly is not None else None,
-            days=params.integer("sickness_benefit_period_days"),
+            days=period_days or params.integer("sickness_benefit_period_days"),
+            total_gross=total,
+            total_net_estimate=round(total * (1 - params.number("health_contribution_rate")), 2)
+            if total is not None
+            else None,
+            start=mother.sick_leave_start,
+            end=mother.sick_leave_end,
+            employer_days=employer_days,
+            zus_days=zus_days,
             payer=payer.who,
             apply_to_pl=payer.apply_to_pl,
             documents_pl=docs,
@@ -392,11 +423,36 @@ def pregnancy_benefits(ctx: Context) -> list[BenefitResult]:
     return out
 
 
+def _care_limit(care, params) -> tuple[int, str]:
+    """Annual limit (days) for the described situation and a Polish explanation."""
+    limits = params.table("care_allowance_limits_days")
+    ages = params.table("care_allowance_age_limits_years")
+    age = care.child_age_years
+    if care.situation == CareSituation.FAMILY_MEMBER:
+        return int(limits["other"]), "Chory członek rodziny wspólnie z Tobą mieszkający: limit 14 dni w roku."
+    if care.situation == CareSituation.HEALTHY_CHILD:
+        if age < ages["healthy_child"]:
+            return int(limits["child_under_8_or_sick_under_14"]), "Zdrowe dziecko do 8 lat: limit 60 dni."
+        if care.child_disabled and age < ages["disabled_child"]:
+            return int(limits["disabled_14_17"]), "Dziecko niepełnosprawne 8–17 lat: limit 30 dni."
+        return 0, "Na zdrowe dziecko od 8 lat zasiłek nie przysługuje."
+    # sick child
+    if age < ages["sick_child"]:
+        return int(limits["child_under_8_or_sick_under_14"]), "Chore dziecko do 14 lat: limit 60 dni."
+    if care.child_disabled and age < ages["disabled_child"]:
+        return int(limits["disabled_14_17"]), "Chore dziecko niepełnosprawne 14–17 lat: limit 30 dni."
+    if age < ages["disabled_child"] + 1:
+        return int(limits["other"]), "Chore dziecko powyżej 14 lat: limit 14 dni."
+    return 0, "Dziecko pełnoletnie nie jest objęte zasiłkiem na dziecko."
+
+
 def care_benefits(ctx: Context) -> list[BenefitResult]:
     if ctx.ent.surviving_children == 0:
         return []
-    limits = ctx.params.table("care_allowance_limits_days")
-    rate = ctx.params.number("rate_care_allowance")
+    params = ctx.params
+    limits = params.table("care_allowance_limits_days")
+    rate = params.number("rate_care_allowance")
+    care = ctx.profile.care
     out = []
     for person in ctx.parents:
         if not ctx.insured(person):
@@ -404,29 +460,72 @@ def care_benefits(ctx: Context) -> list[BenefitResult]:
         base = ctx.bases[person]
         monthly = round(base.net_base * rate, 2) if base.net_base is not None else None
         payer = ctx.payers[person]
+        general_limit = int(limits["child_under_8_or_sick_under_14"])
+        reasons = [
+            "Przysługuje, gdy musisz osobiście opiekować się dzieckiem do 8 lat "
+            "(m.in. gdy zamknięto żłobek lub przedszkole) albo chorym dzieckiem do 14 lat.",
+            f"Limit {general_limit} dni dotyczy całej rodziny łącznie, niezależnie od liczby dzieci "
+            "i liczby uprawnionych rodziców.",
+            "Co do zasady nie przysługuje, gdy w domu jest inna osoba, która może zająć się "
+            "dzieckiem (nie dotyczy chorego dziecka do 2 lat).",
+        ]
+        status = Status.INFO
+        summary = (
+            f"Do {general_limit} dni w roku kalendarzowym, {rate * 100:g}% podstawy"
+            + (f" (ok. {monthly:.2f} zł brutto miesięcznie)." if monthly is not None else ".")
+        )
+        days = general_limit
+        total = None
+        if care is not None:
+            limit, why = _care_limit(care, params)
+            reasons.insert(0, why)
+            cap = int(limits["total_cap"])
+            remaining = max(0, min(limit, cap) - care.days_used_this_year)
+            if care.situation == CareSituation.FAMILY_MEMBER:
+                remaining = max(0, min(remaining, int(limits["other"]) - care.days_used_for_family_members))
+            other_can_care = care.other_household_member_available and not (
+                care.situation == CareSituation.SICK_CHILD and care.child_age_years < 2
+            )
+            if limit == 0:
+                status, days = Status.NOT_ELIGIBLE, 0
+                summary = why
+            elif other_can_care:
+                status, days = Status.NOT_ELIGIBLE, 0
+                summary = "Zasiłek nie przysługuje, bo inny domownik może zająć się opieką."
+                reasons.append("Wyjątek dotyczy tylko chorego dziecka do 2 lat.")
+            elif remaining == 0:
+                status, days = Status.NOT_ELIGIBLE, 0
+                summary = f"Limit {limit} dni w tym roku został już wykorzystany przez rodzinę."
+            else:
+                days = min(care.days_planned, remaining)
+                status = Status.ELIGIBLE
+                summary = f"Za {days} dni opieki przysługuje {rate * 100:g}% podstawy"
+                if monthly is not None:
+                    total = round(days * monthly / params.integer("benefit_days_per_month"), 2)
+                    summary += f" – ok. {total:.2f} zł brutto."
+                else:
+                    summary += "."
+                if days < care.days_planned:
+                    reasons.append(
+                        f"Zaplanowano {care.days_planned} dni, ale do limitu zostało {remaining} dni."
+                    )
+                reasons.append(f"Do wykorzystania w tym roku: {remaining} dni z limitu {limit}.")
         out.append(
             BenefitResult(
                 code=f"care_allowance_{person}",
                 person=person,
                 title_pl="Zasiłek opiekuńczy (gdy dziecko zachoruje)",
-                status=Status.INFO,
-                summary_pl=f"Do {limits['child_under_8_or_sick_under_14']} dni w roku kalendarzowym, "
-                f"{rate * 100:g}% podstawy"
-                + (f" (ok. {monthly:.2f} zł brutto miesięcznie)." if monthly is not None else "."),
-                reasons_pl=[
-                    "Przysługuje, gdy musisz osobiście opiekować się dzieckiem do 8 lat "
-                    "(m.in. gdy zamknięto żłobek lub przedszkole) albo chorym dzieckiem do 14 lat.",
-                    f"Limit {limits['child_under_8_or_sick_under_14']} dni dotyczy całej rodziny "
-                    "łącznie, niezależnie od liczby dzieci.",
-                    "Co do zasady nie przysługuje, gdy w domu jest inna osoba, która może zająć się "
-                    "dzieckiem (nie dotyczy chorego dziecka do 2 lat).",
-                ],
-                legal_basis=[f"{BENEFITS_ACT}, art. 32–33"],
-                days=int(limits["child_under_8_or_sick_under_14"]),
+                status=status,
+                summary_pl=summary,
+                reasons_pl=reasons,
+                legal_basis=[f"{BENEFITS_ACT}, art. 32–34"],
+                days=days,
                 rate=rate,
                 monthly_gross=monthly,
-                monthly_net_estimate=net_estimate(monthly, ctx.params)
-                if monthly is not None
+                monthly_net_estimate=net_estimate(monthly, params) if monthly is not None else None,
+                total_gross=total,
+                total_net_estimate=round(total * (1 - params.number("health_contribution_rate")), 2)
+                if total is not None
                 else None,
                 payer=payer.who,
                 apply_to_pl="Zwolnienie e-ZLA na opiekę wystawia lekarz; informujesz pracodawcę, "

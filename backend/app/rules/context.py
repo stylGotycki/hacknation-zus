@@ -31,6 +31,8 @@ class ResolvedPlan:
     father_work_fraction: float
     paternity_parts: int
     notes_pl: list[str] = field(default_factory=list)
+    parental_blocks: list = field(default_factory=list)  # explicit parts (ParentalBlock)
+    paternity_starts: list = field(default_factory=list)
 
 
 @dataclass
