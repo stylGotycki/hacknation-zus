@@ -1,0 +1,22 @@
+{
+  "id": "S6",
+  "title_pl": "Zwolnienie w ciąży, potem macierzyński",
+  "description_pl": "Mama była na zwolnieniu z kodem B przed porodem. Pracodawca płacił pierwsze 33 dni, potem ZUS.",
+  "tags": [
+    "chorobowy w ciąży"
+  ],
+  "profile": {
+    "child": {
+      "birth_date": "2026-10-20"
+    },
+    "mother": {
+      "employment": "employee",
+      "average_monthly_base": 6200,
+      "employer_insured_count": 50,
+      "sick_leave_start": "2026-07-01",
+      "sick_leave_end": "2026-10-19",
+      "on_pregnancy_sick_leave": true,
+      "insured_days": 400
+    }
+  }
+}

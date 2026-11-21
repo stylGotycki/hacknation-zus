@@ -1,0 +1,22 @@
+{
+  "id": "S7",
+  "title_pl": "Zasiłek w wysokości macierzyńskiego",
+  "description_pl": "Umowa o pracę mamy ustała w ciąży z powodu upadłości pracodawcy. Mama może dostać zasiłek w wysokości macierzyńskiego.",
+  "tags": [
+    "upadłość",
+    "ustanie ubezpieczenia"
+  ],
+  "profile": {
+    "child": {
+      "due_date": "2026-12-15"
+    },
+    "mother": {
+      "employment": "employee",
+      "average_monthly_base": 5800,
+      "employer_insured_count": 50,
+      "sickness_insurance": "mandatory",
+      "insurance_ended_on": "2026-09-30",
+      "job_loss_reason": "employer_bankruptcy"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "S12",
+  "title_pl": "Stała stawka 81,5% i praca na pół etatu",
+  "description_pl": "Mama złożyła wniosek o 81,5% w ciągu 21 dni od porodu i wróciła do pracy na pół etatu w czasie urlopu rodzicielskiego.",
+  "tags": [
+    "81,5%",
+    "praca w czasie urlopu"
+  ],
+  "profile": {
+    "child": {
+      "birth_date": "2026-06-15"
+    },
+    "mother": {
+      "employment": "employee",
+      "average_monthly_base": 6400,
+      "employer_insured_count": 50,
+      "planned_work_fraction": 0.5
+    },
+    "averaged_rate_applied_on": "2026-06-30"
+  }
+}

@@ -1,5 +1,7 @@
-# Scenarios (E3)
+# Scenariusze (E3)
 
-This folder will hold `S1.json` … `S12.json`: personas built by hand from the cases in
-`sprawy_wzory*.zip`. Each file is a ready-made family profile that can be picked in the
-mObywatel mock (E7). Text shown to users stays in Polish; keys and file names stay English.
+Pliki `S1.json` … `S12.json` to persony zbudowane ręcznie na podstawie rodzajów spraw z `sprawy_wzory*.zip`
+(skany – bez OCR; z nazw plików i formularzy wzięto typ świadczenia, dane są przykładowe).
+Każdy plik: `id`, `title_pl`, `description_pl`, `tags` i gotowy `profile` rodziny.
+Lista: `GET /api/scenarios`, strona: `/przyklady`, test: `test_scenarios_list_and_every_scenario_evaluates`.
+Nowa persona = nowy plik `S<n>.json` (numeracja ciągła).

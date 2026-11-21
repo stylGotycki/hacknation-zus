@@ -1,0 +1,23 @@
+{
+  "id": "S2",
+  "title_pl": "Wcześniak: urlop uzupełniający",
+  "description_pl": "Dziecko urodzone w 31. tygodniu ciąży, z długim pobytem w szpitalu. Mama dostaje dodatkowo uzupełniający urlop macierzyński.",
+  "tags": [
+    "wcześniak",
+    "uzupełniający"
+  ],
+  "profile": {
+    "child": {
+      "birth_date": "2026-08-20",
+      "gestation_weeks": 31,
+      "birth_weight_g": 1500,
+      "hospital_days": 40,
+      "hospital_first_day": 3
+    },
+    "mother": {
+      "employment": "employee",
+      "average_monthly_base": 7200,
+      "employer_insured_count": 50
+    }
+  }
+}

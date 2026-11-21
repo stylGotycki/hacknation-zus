@@ -1,0 +1,21 @@
+{
+  "id": "S8",
+  "title_pl": "Rodzina zastępcza",
+  "description_pl": "Rodzina przyjęła na wychowanie 3-letnie dziecko. Przysługuje zasiłek za okres urlopu na warunkach urlopu macierzyńskiego.",
+  "tags": [
+    "adopcja",
+    "rodzina zastępcza"
+  ],
+  "profile": {
+    "child": {
+      "situation": "foster",
+      "placement_date": "2026-09-15",
+      "age_years": 3
+    },
+    "mother": {
+      "employment": "employee",
+      "average_monthly_base": 6000,
+      "employer_insured_count": 50
+    }
+  }
+}

@@ -180,3 +180,8 @@ Opis i linki (ELI, API Sejmu, zus.pl, gov.pl) w [`docs/zrodla-prawne.md`](docs/z
 - urlop ojcowski z datami startu (`plan.paternity_starts`, termin 12 miesięcy),
 - podstawa z historii miesięcy (`monthly_bases`, także krótsza niż 12 miesięcy),
 - wyjątki ubezpieczenia: urlop wychowawczy, umowa na czas określony przedłużona do porodu.
+
+## Scenariusze (E3)
+
+Dwanaście person w `backend/app/seed/scenarios/` (`GET /api/scenarios`), strona `/przyklady` liczy wybraną
+sytuację silnikiem i zapisuje wynik dla osi czasu.

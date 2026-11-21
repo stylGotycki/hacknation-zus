@@ -233,3 +233,15 @@ export function evaluateFamily(profile: FamilyProfile, date?: string) {
     body: JSON.stringify(profile),
   });
 }
+
+export type Scenario = {
+  id: string;
+  title_pl: string;
+  description_pl: string;
+  tags: string[];
+  profile: FamilyProfile;
+};
+
+export function listScenarios() {
+  return api<Scenario[]>("/scenarios");
+}

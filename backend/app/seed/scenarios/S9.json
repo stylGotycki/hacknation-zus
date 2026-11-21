@@ -1,0 +1,19 @@
+{
+  "id": "S9",
+  "title_pl": "Działalność z dobrowolnym chorobowym",
+  "description_pl": "Mama prowadzi jednoosobową firmę i opłaca dobrowolne ubezpieczenie chorobowe. Zasiłek wypłaca ZUS.",
+  "tags": [
+    "JDG"
+  ],
+  "profile": {
+    "child": {
+      "birth_date": "2026-10-05"
+    },
+    "mother": {
+      "employment": "self_employed",
+      "sickness_insurance": "voluntary",
+      "average_monthly_base": 5200,
+      "employer_insured_count": null
+    }
+  }
+}

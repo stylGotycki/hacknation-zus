@@ -1,0 +1,30 @@
+{
+  "id": "S4",
+  "title_pl": "Urlop ojcowski",
+  "description_pl": "Tata na umowie o pracę wykorzystuje 14 dni urlopu ojcowskiego w dwóch częściach.",
+  "tags": [
+    "tata",
+    "ojcowski"
+  ],
+  "profile": {
+    "child": {
+      "birth_date": "2026-09-02"
+    },
+    "mother": {
+      "employment": "employee",
+      "average_monthly_base": 6000,
+      "employer_insured_count": 50
+    },
+    "father": {
+      "employment": "employee",
+      "average_monthly_base": 7000,
+      "employer_insured_count": 50
+    },
+    "plan": {
+      "paternity_starts": [
+        "2026-09-02",
+        "2026-10-15"
+      ]
+    }
+  }
+}

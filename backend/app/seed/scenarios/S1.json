@@ -1,0 +1,19 @@
+{
+  "id": "S1",
+  "title_pl": "Pracownica: macierzyński i rodzicielski",
+  "description_pl": "Mama na etacie, urodziła dziecko w listopadzie 2025 r. Pełny urlop macierzyński, potem rodzicielski.",
+  "tags": [
+    "pracownica",
+    "podstawowy"
+  ],
+  "profile": {
+    "child": {
+      "birth_date": "2025-11-13"
+    },
+    "mother": {
+      "employment": "employee",
+      "average_monthly_base": 6000,
+      "employer_insured_count": 50
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "S10",
+  "title_pl": "Zadłużenie składkowe blokuje zasiłek",
+  "description_pl": "Mama prowadzi firmę i ma zaległości składkowe powyżej 1% płacy minimalnej. Zasiłek będzie dopiero po spłacie.",
+  "tags": [
+    "JDG",
+    "zadłużenie",
+    "odmowa"
+  ],
+  "profile": {
+    "child": {
+      "birth_date": "2026-10-12"
+    },
+    "mother": {
+      "employment": "self_employed",
+      "sickness_insurance": "voluntary",
+      "average_monthly_base": 4800,
+      "contribution_debt": 1800
+    }
+  }
+}

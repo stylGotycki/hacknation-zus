@@ -57,3 +57,12 @@ def test_evaluate_uses_parameters_valid_on_the_given_date(client):
 def test_openapi_documents_rules_endpoint(client):
     schema = client.get("/api/openapi.json").json()
     assert "/api/rules/evaluate" in schema["paths"]
+
+
+def test_scenarios_list_and_every_scenario_evaluates(client):
+    scenarios = client.get("/api/scenarios").json()
+    assert [s["id"] for s in scenarios] == [f"S{i}" for i in range(1, 13)]
+    for scenario in scenarios:
+        response = client.post("/api/rules/evaluate?date=2026-11-21", json=scenario["profile"])
+        assert response.status_code == 200, (scenario["id"], response.text)
+        assert response.json()["benefits"], scenario["id"]
