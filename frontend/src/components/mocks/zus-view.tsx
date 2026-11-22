@@ -4,6 +4,7 @@ import { Download, Loader2, Send, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { formFromProfile, stepsFor } from "@/components/calculator/calculator-form";
 import { CalculatorResults } from "@/components/calculator/calculator-results";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Field, Input } from "@/components/ui/form-controls";
 import {
   evaluateFamily,
   pueQuestion,
+  saveGuideState,
   zusDebt,
   zusEzla,
   zusInsurance,
@@ -24,7 +26,7 @@ import {
   type PueAnswer,
 } from "@/lib/api";
 import { formatDate, formatPln } from "@/lib/format";
-import { saveLastForm, saveLastProfile, saveLastResult } from "@/lib/last-result";
+import { saveLastForm, saveLastProfile, saveLastResult, saveLastStep } from "@/lib/last-result";
 import { PUBLIC_PATHS } from "@/lib/routes";
 import { loadCitizen } from "@/lib/session";
 import { cn } from "@/lib/utils";
@@ -100,7 +102,12 @@ export function ZusView() {
       const evaluated = await evaluateFamily(profile);
       saveLastResult(evaluated);
       saveLastProfile(profile);
-      saveLastForm(null);
+      // The imported data become the calculator answers, saved on the account like typed ones.
+      const form = formFromProfile(profile);
+      const step = stepsFor(form).length - 1;
+      saveLastForm(form);
+      saveLastStep(step);
+      void saveGuideState({ form, step, profile }).catch(() => undefined);
       setResult(evaluated);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się policzyć uprawnień.");

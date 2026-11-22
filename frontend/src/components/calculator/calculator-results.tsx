@@ -149,6 +149,12 @@ function DeadlineList({ deadlines }: { deadlines: Deadline[] }) {
             </div>
             <p className="text-muted-foreground">Termin: {formatDate(d.due)}</p>
             <p className="text-muted-foreground">{d.note_pl}</p>
+            {d.status === "overdue" && d.late_pl && (
+              <p className="mt-1 border-l-[5px] border-amber-500 bg-amber-50 p-2">
+                <span className="font-bold">Termin minął – co możesz zrobić: </span>
+                {d.late_pl}
+              </p>
+            )}
           </li>
         ))}
       </ul>

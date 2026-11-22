@@ -37,6 +37,8 @@ class Rule(Base):
     payer: Mapped[str | None] = mapped_column(Text, nullable=True)
     apply_to_pl: Mapped[str] = mapped_column(Text, default="")
     deadline_kind: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # Termin: advice shown once the deadline has passed (what is lost, what can still be done).
+    late_text_pl: Mapped[str] = mapped_column(Text, default="")
     legal_basis: Mapped[str] = mapped_column(Text, default="")
     source: Mapped[str] = mapped_column(String(20), default="")
     description_pl: Mapped[str] = mapped_column(Text, default="")

@@ -10,6 +10,7 @@ import {
   Heart,
   Hospital,
   Hourglass,
+  Lightbulb,
   type LucideIcon,
   Stethoscope,
   UserRound,
@@ -135,6 +136,18 @@ function periodLines(p: LeavePeriod): string[] {
   return lines;
 }
 
+/** The filed application that fulfils a deadline (same rule, same parent). */
+export function fulfilledBy(d: Deadline, applications: ApplicationRecord[]): ApplicationRecord | undefined {
+  return applications.find(
+    (a) =>
+      a.created_at &&
+      a.fulfils.includes(d.code) &&
+      (a.person === null || d.person === "family" || a.person === d.person) &&
+      // The 81,5% rate needs the statement about the full leave (ZAM, załącznik 6 pkt 15).
+      (d.code !== "t_usredniona" || Boolean(a.data.full_leave)),
+  );
+}
+
 /** Turns periods and deadlines into one date-ordered list of points, like a commit log. */
 export function buildEvents(result: EvaluationResult, applications: ApplicationRecord[] = []): TimelineEvent[] {
   const events: TimelineEvent[] = [];
@@ -184,20 +197,42 @@ export function buildEvents(result: EvaluationResult, applications: ApplicationR
     });
   }
 
+  const used = new Set<number>();
   for (const d of result.deadlines) {
+    const who = d.person === "family" ? "" : `${PERSON_NAME[d.person]}: `;
+    const filed = d.kind === "apply" ? fulfilledBy(d, applications) : undefined;
+    if (filed) {
+      // The filed application replaces the deadline point on the axis.
+      used.add(filed.id);
+      const on = filed.created_at!.slice(0, 10);
+      events.push({
+        id: `application-${filed.id}-${d.code}`,
+        date: on,
+        lane: "main",
+        type: "application",
+        title: `${who}złożono: ${filed.title_pl}`,
+        lines: [
+          `Status: ${STATUS_LABEL[filed.status]} · termin był do ${formatDate(d.due)}` +
+            (on > d.due ? " (złożony po terminie)" : ""),
+        ],
+        application: filed,
+        deadline: d,
+      });
+      continue;
+    }
     events.push({
       id: d.code,
       date: d.due,
       lane: "main",
       type: "deadline",
-      title: `${d.person === "family" ? "" : `${PERSON_NAME[d.person]}: `}${d.title_pl}`,
+      title: `${who}${d.title_pl}`,
       lines: [d.note_pl],
       deadline: d,
     });
   }
 
   for (const a of applications) {
-    if (!a.created_at) continue;
+    if (!a.created_at || used.has(a.id)) continue;
     events.push({
       id: `application-${a.id}`,
       date: a.created_at.slice(0, 10),
@@ -262,6 +297,7 @@ function Graph({
 }) {
   const x = LANE_X[event.lane];
   const style = event.type === "deadline" && event.deadline ? DEADLINE_STYLE[event.deadline.status] : null;
+  const late = event.type === "application" && event.deadline && event.date > event.deadline.due;
   const Icon = iconFor(event);
   const filled = event.type === "start" || event.type === "birth";
   const size = event.type === "birth" ? 44 : 36;
@@ -302,7 +338,7 @@ function Graph({
               : filled
                 ? cn(LANE_BORDER[event.lane], LANE_COLOR[event.lane], "text-white")
                 : cn(LANE_BORDER[event.lane], "bg-background", LANE_TEXT[event.lane]),
-          event.type === "application" && "border-navy bg-background text-navy",
+          event.type === "application" && (late ? "border-amber-600 bg-background text-amber-700" : "border-navy bg-background text-navy"),
           open && "ring-4 ring-orange",
         )}
         style={{ left: x, top: DOT_Y, width: size, height: size }}
@@ -349,13 +385,25 @@ function kindOf(event: TimelineEvent): string | null {
   return prefixes.find(([prefix]) => code.startsWith(prefix))?.[1] ?? null;
 }
 
-/** The form a parent files for this event: a leave request to the employer or ZAM to ZUS. */
+const KIND_FORMS: Record<string, string[]> = {
+  maternity: ["leave_maternity_before", "leave_taken_in", "leave_maternity_father", "leave_maternity_resignation"],
+  supplementary: ["leave_supplementary"],
+  parental: ["leave_parental", "parental_work"],
+  paternity: ["leave_paternity"],
+};
+
+/** The form a parent files for this event: the request tied to its deadline, else one for its leave. */
 function suggestionFor(event: TimelineEvent, extras: TimelineExtras): Suggestion | undefined {
+  const d = event.deadline;
+  if (d) {
+    const tied = extras.suggestions.find((s) => s.deadline_codes.includes(d.code));
+    if (tied) return tied;
+  }
   const kind = kindOf(event);
-  const person = event.period?.person ?? event.deadline?.person;
+  const person = event.period?.person ?? d?.person;
   if (!kind || (person !== "mother" && person !== "father")) return undefined;
   const mine = extras.suggestions.filter((s) => s.person === person);
-  return mine.find((s) => s.form_code === `leave_${kind}`) ?? mine.find((s) => !s.form_code.startsWith("leave_"));
+  return mine.find((s) => KIND_FORMS[kind]?.includes(s.form_code)) ?? mine.find((s) => s.form_code === "zus_zam");
 }
 
 function ApplicationHistory({ application }: { application: ApplicationRecord }) {
@@ -388,7 +436,9 @@ function ApplicationBox({ event, extras }: { event: TimelineEvent; extras: Timel
   }
   const suggestion = suggestionFor(event, extras);
   if (!suggestion) return null;
-  const filed = extras.applications.find((a) => a.form_code === suggestion.form_code);
+  const filed = extras.applications.find(
+    (a) => a.form_code === suggestion.form_code && (a.person === null || a.person === suggestion.person),
+  );
   return (
     <section className="flex flex-col gap-2 border-l-[5px] border-navy bg-background p-3">
       <p className="text-xs font-bold uppercase tracking-wide text-navy">Wniosek</p>
@@ -419,6 +469,44 @@ function ApplicationBox({ event, extras }: { event: TimelineEvent; extras: Timel
           Wypełnij wniosek <ChevronRight className="size-4" />
         </Link>
       )}
+    </section>
+  );
+}
+
+function LateAdvice({ deadline }: { deadline: Deadline }) {
+  return (
+    <div className="flex gap-2 border-l-[5px] border-amber-500 bg-amber-50 p-3 text-sm">
+      <Lightbulb className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden />
+      <p>
+        <span className="font-bold">Termin minął – co możesz zrobić: </span>
+        {deadline.late_pl}
+      </p>
+    </div>
+  );
+}
+
+/** Advice for every deadline that has passed without a filed application. */
+function AdvicePanel({ result, extras }: { result: EvaluationResult; extras: TimelineExtras }) {
+  const missed = result.deadlines.filter(
+    (d) => d.status === "overdue" && d.late_pl && !(d.kind === "apply" && fulfilledBy(d, extras.applications)),
+  );
+  if (!missed.length) return null;
+  return (
+    <section aria-labelledby="porady" className="flex flex-col gap-2 border border-amber-300 bg-amber-50/60 p-4">
+      <h2 id="porady" className="flex items-center gap-2 font-bold">
+        <Lightbulb className="size-5 text-amber-700" aria-hidden /> Porady: terminy, które minęły
+      </h2>
+      <ul className="flex flex-col gap-2 text-sm">
+        {missed.map((d) => (
+          <li key={d.code}>
+            <span className="font-bold">
+              {d.person === "family" ? "" : `${PERSON_NAME[d.person]}: `}
+              {d.title_pl}
+            </span>{" "}
+            <span className="text-muted-foreground">(do {formatDate(d.due)})</span> – {d.late_pl}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -483,6 +571,7 @@ function EventDetails({
           <span className="font-medium">Termin: {formatDate(d.due)}.</span> {d.note_pl}
         </p>
       )}
+      {d && d.status === "overdue" && d.late_pl && !event.application && <LateAdvice deadline={d} />}
       {benefit && (
         <>
           <p className="text-sm">
@@ -539,6 +628,7 @@ export function VerticalTimeline({
 
   return (
     <div className="flex flex-col gap-4">
+      <AdvicePanel result={result} extras={extras} />
       {hasFather && (
         <div role="group" aria-label="Pokaż oś czasu dla" className="flex gap-2">
           {(["all", "mother", "father"] as const).map((value) => (
@@ -588,7 +678,7 @@ export function VerticalTimeline({
       <ol>
         {events.map((event, i) => {
           const deadline = event.deadline;
-          const style = deadline ? DEADLINE_STYLE[deadline.status] : null;
+          const style = deadline && event.type === "deadline" ? DEADLINE_STYLE[deadline.status] : null;
           return (
             <li key={event.id} className="flex gap-2">
               <Graph

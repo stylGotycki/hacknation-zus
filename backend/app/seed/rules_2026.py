@@ -13,6 +13,71 @@ PARENTS = {"mama": "mamy", "tata": "taty"}
 ENTITLED = {"mama": "mama_uprawniona", "tata": "tata_uprawniony"}
 
 
+def _soonest(key):
+    """Template: the earliest start date if the request is filed today."""
+    return f"{{dodaj_dni(dzis(), tabela('application_lead_days', '{key}'))}}"
+
+
+# Advice shown once a deadline has passed (rule field `late_text_pl`): what is lost, what can
+# still be done. Every sentence follows from the cited provisions of the deadline rule.
+LATE = {
+    "t_usredniona": "Stawki {zaokr(param('rate_averaged') * 100, 1)}% nie można już wybrać. Zasiłek wyniesie "
+    "{zaokr(param('rate_maternity') * 100, 0)}% podstawy za urlop macierzyński i {zaokr(param('rate_parental') * 100, 0)}% "
+    "za urlop rodzicielski.",
+    "t_mac_przed": "Wniosek trzeba złożyć najpóźniej {tabela('application_lead_days', 'maternity_before_birth')} dni przed "
+    "rozpoczęciem urlopu – wskaż późniejszy początek (najwcześniej "
+    + _soonest("maternity_before_birth")
+    + "). "
+    "Jeśli nie wykorzystasz urlopu przed porodem, zacznie się on w dniu porodu.",
+    "t_rezygnacja": "Wskaż późniejszy dzień powrotu do pracy – co najmniej {tabela('application_lead_days', 'mother_resignation')} "
+    "dni od złożenia wniosku (najwcześniej "
+    + _soonest("mother_resignation")
+    + "). Do tego dnia trwa Twój urlop macierzyński.",
+    "t_tata_macierzynski": "Wskaż późniejszy początek urlopu – co najmniej {tabela('application_lead_days', 'father_maternity_part')} "
+    "dni od złożenia wniosku (najwcześniej "
+    + _soonest("father_maternity_part")
+    + "). Do tego czasu urlop wykorzystuje mama.",
+    "t_uzupelniajacy": "{jesli(jesli(uzup_bierze == 'tata', tata.pracownik, mama.pracownik), "
+    "'Pracodawca jest obowiązany uwzględnić tylko wniosek złożony w terminie. Złóż go od razu i ustal z pracodawcą, czy go uwzględni – urlop uzupełniający musi zacząć się bezpośrednio po macierzyńskim.', "
+    "'Wniosek trzeba było złożyć przed końcem zasiłku za urlop macierzyński. Zapytaj w ZUS, czy możesz go jeszcze złożyć.')}",
+    "t_rodzicielski_mama": "{jesli(mama.pracownik, 'Pracodawca jest obowiązany uwzględnić wniosek złożony co najmniej ' + "
+    "tabela('application_lead_days', 'parental') + ' dni przed początkiem urlopu – wskaż późniejszy start (najwcześniej ' + "
+    "dodaj_dni(dzis(), tabela('application_lead_days', 'parental')) + ').', 'Złóż wniosek do ZUS jak najszybciej – zasiłek "
+    "nadal Ci przysługuje, a roszczenie przedawnia się po ' + param('claim_limitation_months') + ' miesiącach od ostatniego dnia okresu.')} "
+    "Urlop wykorzystaj do {rodzicielski_termin}.",
+    "t_rodzicielski_tata": "{jesli(tata.pracownik, 'Pracodawca jest obowiązany uwzględnić wniosek złożony co najmniej ' + "
+    "tabela('application_lead_days', 'parental') + ' dni przed początkiem urlopu – wskaż późniejszy start (najwcześniej ' + "
+    "dodaj_dni(dzis(), tabela('application_lead_days', 'parental')) + ').', 'Złóż wniosek do ZUS jak najszybciej – zasiłek "
+    "nadal przysługuje, a roszczenie przedawnia się po ' + param('claim_limitation_months') + ' miesiącach od ostatniego dnia okresu.')} "
+    "Urlop wykorzystaj do {rodzicielski_termin}.",
+    "t_praca_mama": "Wskaż późniejszy początek pracy (najwcześniej "
+    + _soonest("work_combination")
+    + "). Do tego dnia "
+    "korzystasz z pełnego urlopu rodzicielskiego.",
+    "t_praca_tata": "Wskaż późniejszy początek pracy (najwcześniej "
+    + _soonest("work_combination")
+    + "). Do tego dnia "
+    "tata korzysta z pełnego urlopu rodzicielskiego.",
+    "t_ojcowski": "{jesli(tata.pracownik, 'Wskaż późniejszy początek urlopu (najwcześniej ' + dodaj_dni(dzis(), "
+    "tabela('application_lead_days', 'paternity')) + ').', 'Złóż wniosek do ZUS jak najszybciej.')} Urlop ojcowski "
+    "musi się skończyć najpóźniej {ojcowski_termin}.",
+    "t_ojcowski_do": "Prawo do urlopu i zasiłku ojcowskiego wygasło – niewykorzystana część przepada.",
+    "t_rodzicielski_do": "Niewykorzystana część urlopu rodzicielskiego przepada – zasiłek za nią nie przysługuje.",
+    "t_na_warunkach": "Pracodawca jest obowiązany uwzględnić wniosek złożony w ciągu "
+    "{tabela('application_lead_days', 'taken_in_application')} dni od przyjęcia dziecka. "
+    "{jesli(dodaj_dni(data_zdarzenia, tabela('application_lead_days', 'taken_in_start_max')) >= dzis(), "
+    "'Złóż go od razu – urlop musi się zacząć najpóźniej ' + dodaj_dni(data_zdarzenia, tabela('application_lead_days', 'taken_in_start_max')) + '.', "
+    "'Minął też dzień, w którym urlop musiał się zacząć (' + dodaj_dni(data_zdarzenia, tabela('application_lead_days', 'taken_in_start_max')) + ') – ustal z pracodawcą, czy go udzieli.')}",
+    "t_dlug_mama": "Zadłużenie nie zostało spłacone w ciągu {param('debt_repayment_window_months')} miesięcy – prawo "
+    "do zasiłku z tego zdarzenia przedawniło się.",
+    "t_dlug_tata": "Zadłużenie nie zostało spłacone w ciągu {param('debt_repayment_window_months')} miesięcy – prawo "
+    "do zasiłku z tego zdarzenia przedawniło się.",
+    "t_przedawnienie": "Roszczenie się przedawniło. Wyjątki: jeśli nie mogłeś go zgłosić z przyczyn od Ciebie "
+    "niezależnych, {param('claim_limitation_months')} miesięcy liczy się od dnia, w którym ustała przeszkoda; jeśli "
+    "zasiłku nie wypłacono przez błąd płatnika lub ZUS, roszczenie przedawnia się po 3 latach.",
+}
+
+
 def V(code, expression, title, basis, source, group, condition=None, description=""):  # noqa: N802
     return dict(
         code=code,
@@ -109,6 +174,7 @@ def M(
     deadline_kind=None,
     order=0,
     group=None,
+    late="",
 ):
     groups = {
         "dokument": "Dokumenty",
@@ -131,6 +197,7 @@ def M(
         severity=severity,
         expression=date,
         deadline_kind=deadline_kind,
+        late_text_pl=late or LATE.get(code, ""),
         order=order,
         group_pl=group or groups[kind],
     )
@@ -1602,7 +1669,7 @@ RULES: list[dict] = [
     M(
         "termin",
         "t_usredniona",
-        "mama_uprawniona and dziecko_zyje and usredniona_w_terminie and brak(plan.wniosek_usredniony_zlozony)",
+        "mama_uprawniona and dziecko_zyje and brak(plan.wniosek_usredniony_zlozony)",
         "Wniosek o stawkę uśrednioną 81,5%",
         "Wniosek o zasiłek za pełny urlop macierzyński i rodzicielski w stawce 81,5% – najpóźniej {param('averaged_application_deadline_days')} dni po {jesli(porod, 'porodzie', 'przyjęciu dziecka')}.",
         "UZ art. 30a ust. 1–2",

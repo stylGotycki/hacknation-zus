@@ -9,6 +9,7 @@ from app.api.parameters import parameters_valid_on
 from app.core.db import DbSession
 from app.engine.store import rules_version
 from app.forms import FORMS, FormDefinition, missing_fields
+from app.forms.definitions import role_of
 from app.forms.prefill import Suggestion, suggest
 from app.models import Application, ApplicationDraft, Family
 from app.rules import FamilyProfile
@@ -17,6 +18,7 @@ router = APIRouter(tags=["applications"])
 
 # Until the mObywatel mock (E7) provides real identities, the browser sends any stable id.
 OwnerId = Annotated[str, Header(alias="X-Owner-Id")]
+OptionalOwner = Annotated[str | None, Header(alias="X-Owner-Id")]
 
 STATUS_FLOW = ["submitted", "in_progress", "decided"]
 STATUS_NOTE_PL = {
@@ -40,6 +42,8 @@ def _family(db: DbSession, owner: str) -> Family:
 
 
 def _definition(code: str) -> FormDefinition:
+    """Accepts a form code or a draft key `code:role` (one draft per form and parent)."""
+    code = code.split(":", 1)[0]
     if code not in FORMS:
         raise HTTPException(404, f"Unknown form: {code}")
     return FORMS[code]
@@ -58,13 +62,30 @@ def get_form(code: str) -> FormDefinition:
     return _definition(code)
 
 
+def identity_of(owner: str | None) -> dict | None:
+    """The logged-in mObywatel citizen: name, PESEL and which parent they are (for prefilling)."""
+    from app.mocks import data
+    from app.seed.scenarios import load_scenarios
+
+    if not owner or not owner.startswith("mobywatel-"):
+        return None
+    citizen_id = owner.removeprefix("mobywatel-")
+    scenario = next((s for s in load_scenarios() if s["id"] == citizen_id), None)
+    if scenario is None or citizen_id not in data.CITIZENS:
+        return None
+    role, _ = data.parent_data(scenario["profile"])
+    return {**data.CITIZENS[citizen_id], "role": role}
+
+
 @router.post("/applications/suggestions", response_model=list[Suggestion])
-def suggestions(profile: FamilyProfile, db: DbSession, on: date | None = None) -> list[Suggestion]:
-    """Applications the family should file, prefilled from the calculation."""
+def suggestions(
+    profile: FamilyProfile, db: DbSession, owner: OptionalOwner = None, on: date | None = None
+) -> list[Suggestion]:
+    """Applications the family should file, prefilled from the calculation (and the citizen's identity)."""
     from app.api.rules import run_evaluation
 
     result = run_evaluation(db, profile, on)
-    return suggest(result, profile.model_dump(mode="json"))
+    return suggest(result, profile.model_dump(mode="json"), identity_of(owner))
 
 
 # --- Drafts ------------------------------------------------------------------------------
@@ -131,6 +152,7 @@ def delete_draft(code: str, owner: OwnerId, db: DbSession) -> None:
 class ApplicationIn(BaseModel):
     form_code: str
     data: dict[str, Any]
+    draft_key: str | None = None  # the draft to remove after sending
 
 
 class HistoryEntry(BaseModel):
@@ -143,6 +165,8 @@ class ApplicationOut(BaseModel):
     id: int
     form_code: str
     title_pl: str
+    person: str | None = None  # which parent filed it
+    fulfils: list[str] = []  # deadline rules it fulfils (the timeline replaces their points)
     status: str
     submitted_to: str | None
     data: dict[str, Any]
@@ -157,6 +181,8 @@ def _out(app: Application) -> ApplicationOut:
         id=app.id,
         form_code=app.form_code,
         title_pl=FORMS[app.form_code].title_pl if app.form_code in FORMS else app.form_code,
+        person=role_of(FORMS[app.form_code], app.data) if app.form_code in FORMS else None,
+        fulfils=FORMS[app.form_code].fulfils if app.form_code in FORMS else [],
         status=app.status,
         submitted_to=app.submitted_to,
         data=app.data,
@@ -184,7 +210,7 @@ def submit_application(body: ApplicationIn, owner: OwnerId, db: DbSession) -> Ap
     definition = _definition(body.form_code)
     missing = missing_fields(definition, body.data)
     if missing:
-        raise HTTPException(422, f"Missing required fields: {', '.join(missing)}")
+        raise HTTPException(422, f"Uzupełnij wymagane pola: {', '.join(missing)}")
     family = _family(db, owner)
     application = Application(
         family_id=family.id,
@@ -199,13 +225,72 @@ def submit_application(body: ApplicationIn, owner: OwnerId, db: DbSession) -> Ap
     db.add(application)
     draft = db.scalar(
         select(ApplicationDraft).where(
-            ApplicationDraft.family_id == family.id, ApplicationDraft.form_code == body.form_code
+            ApplicationDraft.family_id == family.id,
+            ApplicationDraft.form_code == (body.draft_key or body.form_code),
         )
     )
     if draft is not None:
         db.delete(draft)
     db.commit()
     return _out(application)
+
+
+# --- Saved state of the guide (calculator answers and step) ------------------------------
+
+
+class GuideState(BaseModel):
+    form: dict[str, Any] | None = None  # calculator answers
+    step: int = 0
+    profile: dict[str, Any] | None = None  # family profile behind the last result
+    updated_at: datetime | None = None
+
+
+@router.get("/state", response_model=GuideState)
+def get_state(owner: OwnerId, db: DbSession) -> GuideState:
+    """What the user entered last time, so they continue where they stopped after logging in again."""
+    family = _family(db, owner)
+    saved = (family.profile or {}).get("guide_state") or {}
+    return GuideState(**saved, updated_at=family.updated_at if saved else None)
+
+
+@router.put("/state", response_model=GuideState)
+def put_state(body: GuideState, owner: OwnerId, db: DbSession) -> GuideState:
+    family = _family(db, owner)
+    family.profile = {
+        **(family.profile or {}),
+        "guide_state": body.model_dump(mode="json", exclude={"updated_at"}),
+    }
+    db.commit()
+    db.refresh(family)
+    return GuideState(**family.profile["guide_state"], updated_at=family.updated_at)
+
+
+def merge_owner(db: DbSession, source: str, target: str) -> None:
+    """After logging in, the guest's work (state, drafts, applications) moves to the citizen's account.
+
+    The account wins: a draft of the same form or a saved calculator state already there is kept.
+    """
+    if not source or source == target:
+        return
+    guest = db.scalar(select(Family).where(Family.owner_id == source))
+    if guest is None:
+        return
+    account = _family(db, target)
+    if not (account.profile or {}).get("guide_state") and (guest.profile or {}).get("guide_state"):
+        account.profile = {**(account.profile or {}), "guide_state": guest.profile["guide_state"]}
+    have = set(
+        db.scalars(
+            select(ApplicationDraft.form_code).where(ApplicationDraft.family_id == account.id)
+        )
+    )
+    for draft in db.scalars(select(ApplicationDraft).where(ApplicationDraft.family_id == guest.id)):
+        if draft.form_code not in have:
+            draft.family_id = account.id
+    for application in db.scalars(select(Application).where(Application.family_id == guest.id)):
+        application.family_id = account.id
+    db.flush()
+    db.delete(guest)
+    db.commit()
 
 
 @router.post("/applications/{application_id}/advance", response_model=ApplicationOut)

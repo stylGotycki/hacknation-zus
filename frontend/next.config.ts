@@ -1,13 +1,26 @@
 import type { NextConfig } from "next";
 
+import { PUBLIC_PATHS } from "./src/lib/routes";
+
+// Polish public URL -> English route, for running without nginx (`npm run dev`, Vercel).
+// In Docker nginx does the same translation before requests reach Next.js.
+const polishRoutes = Object.entries(PUBLIC_PATHS)
+  .filter(([route, url]) => url !== `/${route}`)
+  .flatMap(([route, url]) => [
+    { source: url, destination: `/${route}` },
+    { source: `${url}/:path*`, destination: `/${route}/:path*` },
+  ]);
+
 const nextConfig: NextConfig = {
   // Self-contained server bundle for a small production image (used by the deploy epic).
   output: "standalone",
-  // In Docker, nginx routes /api to the backend before requests reach Next.js.
-  // This rewrite only matters when running `npm run dev` directly on your machine.
   async rewrites() {
     const api = process.env.API_URL ?? "http://localhost:8000";
-    return [{ source: "/api/:path*", destination: `${api}/api/:path*` }];
+    return {
+      beforeFiles: polishRoutes,
+      afterFiles: [{ source: "/api/:path*", destination: `${api}/api/:path*` }],
+      fallback: [],
+    };
   },
 };
 

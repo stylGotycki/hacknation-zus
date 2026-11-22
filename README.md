@@ -274,3 +274,20 @@ Wszystko to symulacja na danych przykładowych, wyprowadzonych z 12 person (E3).
   Dane kontaktowe się zmieniają, dlatego strona odsyła do stron organizacji i KRS, a nie podaje telefonów.
 - **Symulowany wniosek o odpis aktu urodzenia** – nowy formularz `civil_registry_extract` (adresat: urząd stanu cywilnego),
   dostępny z listy wniosków i bezpośrednio przez `/wnioski?form=civil_registry_extract`. Nic nie trafia do urzędu.
+
+## Iteracja 4 – wnioski, konto, porady
+
+- **Wnioski zgodne z wzorami:** każdy wniosek do pracodawcy zawiera dokładnie elementy z paragrafu
+  rozporządzenia o wnioskach (RW § 2, 3, 5, 14, 15, 16, 17, 18) i listę załączników z tego paragrafu;
+  ZAM odpowiada załącznikowi nr 6 RZ (pkt 1–19). Definicje: `backend/app/forms/definitions.py`.
+- **Podsumowanie przed wysłaniem:** podgląd dokumentu (nagłówek, treść, oświadczenia, załączniki,
+  podpis), tabela danych z „Popraw”, pouczenie i oświadczenie o zgodności z prawdą.
+- **Oś czasu:** złożony wniosek zastępuje punkt terminu, który spełnia (`FormDefinition.fulfils`);
+  wniosek po terminie jest oznaczony.
+- **Porady po terminie:** pole reguły `late_text_pl` (edytowalne w panelu admina, zakładka Reguły,
+  rodzaj „termin”) – co przepada i co da się jeszcze zrobić; pokazywane w kalkulatorze, na osi czasu
+  (panel „Porady”) i na kartach wniosków.
+- **Konto:** odpowiedzi i krok kalkulatora (`/api/state`) oraz wersje robocze wniosków zapisują się na
+  koncie; wylogowanie czyści dane z przeglądarki, ponowne logowanie przywraca stan. Dane gościa
+  przechodzą na konto przy logowaniu.
+- Polskie adresy działają też bez nginx (rewrites w `next.config.ts`) – wystarczy do wdrożenia na Vercel.

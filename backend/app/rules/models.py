@@ -269,6 +269,8 @@ class Deadline(BaseModel):
     note_pl: str
     benefit_code: str | None = None
     legal_basis: str | None = None
+    # Advice once the deadline has passed: what is lost and what can still be done.
+    late_pl: str | None = None
 
 
 class Totals(BaseModel):

@@ -46,3 +46,23 @@ def init_db() -> None:
     import app.models  # noqa: F401  (registers models on Base.metadata)
 
     Base.metadata.create_all(bind=engine)
+    _add_missing_columns()
+
+
+def _add_missing_columns() -> None:
+    """create_all never alters tables: add columns introduced after the database was made."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    with engine.begin() as conn:
+        for table in Base.metadata.sorted_tables:
+            if not inspector.has_table(table.name):
+                continue
+            existing = {c["name"] for c in inspector.get_columns(table.name)}
+            for column in table.columns:
+                if column.name in existing:
+                    continue
+                kind = column.type.compile(dialect=engine.dialect)
+                default = " DEFAULT ''" if kind.upper() in ("TEXT", "VARCHAR") else ""
+                sql = f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {kind}{default}'
+                conn.execute(text(sql))

@@ -59,3 +59,22 @@ export function loadLastProfile<T>(): T | null {
     return null;
   }
 }
+
+const STEP_KEY = "parent-guide:last-step";
+
+/** The calculator step the user stopped at. */
+export function saveLastStep(step: number): void {
+  try {
+    sessionStorage.setItem(STEP_KEY, String(step));
+  } catch {
+    // Without storage the calculator starts from the first step.
+  }
+}
+
+export function loadLastStep(): number {
+  try {
+    return Number(sessionStorage.getItem(STEP_KEY) ?? 0) || 0;
+  } catch {
+    return 0;
+  }
+}

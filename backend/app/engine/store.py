@@ -32,6 +32,7 @@ RULE_FIELDS = (
     "payer",
     "apply_to_pl",
     "deadline_kind",
+    "late_text_pl",
     "legal_basis",
     "source",
     "description_pl",

@@ -63,6 +63,7 @@ class RuleDef:
     payer: str | None = None
     apply_to_pl: str = ""
     deadline_kind: str | None = None
+    late_text_pl: str = ""
     legal_basis: str = ""
     source: str = ""
     description_pl: str = ""
@@ -73,7 +74,7 @@ class RuleDef:
         out = [(f, getattr(self, f)) for f in EXPRESSION_FIELDS if getattr(self, f)]
         if self.person and self.person not in PERSON_LITERALS:
             out.append(("person", self.person))
-        for f in ("title_pl", "text_pl", "apply_to_pl"):
+        for f in ("title_pl", "text_pl", "apply_to_pl", "late_text_pl"):
             for m in TEMPLATE.finditer(getattr(self, f) or ""):
                 out.append((f, m.group(1)))
         return out
@@ -209,6 +210,7 @@ class Message:
     text: str
     title: str
     date: date | None = None
+    late_text: str = ""
 
 
 @dataclass
@@ -335,6 +337,7 @@ class Runtime:
                         text=self._render(rule.text_pl, ev),
                         title=self._render(rule.title_pl, ev),
                         date=when,
+                        late_text=self._render(rule.late_text_pl, ev),
                     )
                 )
             except (ExpressionError, TypeError, ValueError, ZeroDivisionError) as exc:

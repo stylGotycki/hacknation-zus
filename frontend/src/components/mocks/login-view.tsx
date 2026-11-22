@@ -31,7 +31,7 @@ export function LoginView() {
       // The pause imitates the confirmation in the mObywatel app.
       await new Promise((resolve) => setTimeout(resolve, 900));
       const result = await mobywatelLogin(selected.id);
-      startSession(result.owner_id, result.citizen);
+      await startSession(result.owner_id, result.citizen);
       router.push(PUBLIC_PATHS.zus);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się zalogować.");

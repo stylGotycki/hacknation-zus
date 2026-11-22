@@ -86,6 +86,12 @@ const FIELDS: Record<RuleKind, FieldDef[]> = {
     { key: "deadline_kind", label: "Rodzaj: apply / use_by" },
     { key: "expression", label: "Data terminu", code: true },
     { key: "text_pl", label: "Opis", rows: 2 },
+    {
+      key: "late_text_pl",
+      label: "Porada po terminie",
+      hint: "Pokazywana, gdy termin minął: co przepada i co jeszcze da się zrobić. Może zawierać {wyrażenie}",
+      rows: 3,
+    },
   ],
   ryzyko: [
     { key: "person", label: "Osoba" },
@@ -123,6 +129,7 @@ const EMPTY: RuleData = {
   payer: null,
   apply_to_pl: "",
   deadline_kind: null,
+  late_text_pl: "",
   legal_basis: "",
   source: "UZ",
   description_pl: "",

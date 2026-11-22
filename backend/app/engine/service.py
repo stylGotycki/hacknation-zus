@@ -158,6 +158,7 @@ def evaluate_profile(
                     note_pl=m.text,
                     benefit_code=m.rule.benefit,
                     legal_basis=m.rule.legal_basis or None,
+                    late_pl=m.late_text or None,
                 )
             )
         elif kind == "ryzyko":

@@ -11,11 +11,21 @@ import {
   type EvaluationResult,
   evaluateFamily,
   type FamilyProfile,
+  getGuideState,
   type MotherCannotCare,
   type ParentProfile,
+  saveGuideState,
 } from "@/lib/api";
 import { formatDate, toIsoDate } from "@/lib/format";
-import { loadLastForm, loadLastProfile, saveLastForm, saveLastProfile, saveLastResult } from "@/lib/last-result";
+import {
+  loadLastForm,
+  loadLastProfile,
+  loadLastStep,
+  saveLastForm,
+  saveLastProfile,
+  saveLastResult,
+  saveLastStep,
+} from "@/lib/last-result";
 import { PUBLIC_PATHS } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
@@ -992,12 +1002,53 @@ export function CalculatorForm() {
   const [tried, setTried] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const [restored, setRestored] = useState(false);
+
+  // Continue where the user stopped: this tab first, then what their account saved (after a new login,
+  // in another tab or on another device).
   useEffect(() => {
-    const saved = loadLastForm<FormState>();
-    if (saved && saved.stage !== undefined) return setForm({ ...INITIAL, ...saved, mother: { ...INITIAL.mother, ...saved.mother }, father: { ...INITIAL.father, ...saved.father } });
-    const profile = loadLastProfile<FamilyProfile>();
-    if (profile) setForm(formFromProfile(profile));
+    const apply = (saved: Partial<FormState>, savedStep: number) => {
+      const next = { ...INITIAL, ...saved, mother: { ...INITIAL.mother, ...saved.mother }, father: { ...INITIAL.father, ...saved.father } };
+      setForm(next);
+      const all = stepsFor(next);
+      const at = Math.min(savedStep, all.length - 1);
+      setStep(at);
+      if (all[at] === "wynik") void calculateFor(next);
+    };
+    const local = loadLastForm<FormState>();
+    if (local && local.stage !== undefined) {
+      apply(local, loadLastStep());
+      setRestored(true);
+      return;
+    }
+    getGuideState()
+      .then((state) => {
+        const saved = state.form as FormState | null;
+        if (saved && saved.stage !== undefined) return apply(saved, state.step);
+        const profile = loadLastProfile<FamilyProfile>();
+        if (profile) setForm(formFromProfile(profile));
+      })
+      .catch(() => undefined)
+      .finally(() => setRestored(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Autosave every answer (tab + account), shortly after the user stops typing.
+  useEffect(() => {
+    if (!restored) return;
+    saveLastForm(form);
+    saveLastStep(step);
+    const timer = setTimeout(() => {
+      let profile: FamilyProfile | null = null;
+      try {
+        profile = form.stage ? buildProfile(form) : null;
+      } catch {
+        profile = null;
+      }
+      void saveGuideState({ form, step, profile }).catch(() => undefined);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [form, step, restored]);
 
   const steps = useMemo(() => stepsFor(form), [form]);
   const current = steps[Math.min(step, steps.length - 1)];
@@ -1008,14 +1059,14 @@ export function CalculatorForm() {
     setResult(null);
   };
 
-  async function calculate() {
+  async function calculateFor(state: FormState) {
     setLoading(true);
     setError(null);
     try {
-      const profile = buildProfile(form);
+      const profile = buildProfile(state);
       const evaluated = await evaluateFamily(profile);
       saveLastResult(evaluated);
-      saveLastForm(form);
+      saveLastForm(state);
       saveLastProfile(profile);
       setResult(evaluated);
     } catch (err) {
@@ -1035,14 +1086,14 @@ export function CalculatorForm() {
     const target = Math.min(step + 1, steps.length - 1);
     setStep(target);
     saveLastForm(form);
-    if (steps[target] === "wynik") void calculate();
+    if (steps[target] === "wynik") void calculateFor(form);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function go(i: number) {
     setStep(i);
     setTried(false);
-    if (steps[i] === "wynik") void calculate();
+    if (steps[i] === "wynik") void calculateFor(form);
   }
 
   return (

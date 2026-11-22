@@ -7,9 +7,16 @@ import { useCallback, useEffect, useState } from "react";
 import { ApplicationForm } from "@/components/applications/application-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   advanceApplication,
+  draftKey,
   getSuggestions,
   listApplications,
   listDrafts,
@@ -25,13 +32,18 @@ import {
 import { formatDate, formatDaysLeft } from "@/lib/format";
 import { loadLastProfile } from "@/lib/last-result";
 import { PUBLIC_PATHS } from "@/lib/routes";
+import { ensureRestored } from "@/lib/session";
 
 const STATUS_LABEL: Record<ApplicationStatus, string> = {
   submitted: "Złożony",
   in_progress: "W rozpatrzeniu",
   decided: "Rozpatrzony",
 };
-const TO_LABEL = { employer: "pracodawca", zus: "ZUS", registry: "urząd stanu cywilnego" } as const;
+const TO_LABEL = {
+  employer: "pracodawca",
+  zus: "ZUS",
+  registry: "urząd stanu cywilnego",
+} as const;
 
 type Editing = { definition: FormDefinition; data: FormData; step: number };
 
@@ -53,28 +65,47 @@ export function ApplicationsView() {
   }, []);
 
   useEffect(() => {
-    const profile = loadLastProfile<FamilyProfile>();
-    setHasProfile(Boolean(profile));
-    Promise.all([listForms(), refresh(), profile ? getSuggestions(profile) : Promise.resolve(null)])
-      .then(([f, , s]) => {
-        setForms(f);
-        setSuggestions(s);
-        // A link such as /wnioski?form=civil_registry_extract opens that form straight away.
-        const wanted = new URLSearchParams(window.location.search).get("form");
-        const definition = f.find((item) => item.code === wanted);
-        if (definition) setEditing({ definition, data: {}, step: 0 });
-      })
-      .catch((e: Error) => setError(e.message));
+    void ensureRestored().then(() => {
+      const profile = loadLastProfile<FamilyProfile>();
+      setHasProfile(Boolean(profile));
+      Promise.all([
+        listForms(),
+        refresh(),
+        profile ? getSuggestions(profile) : Promise.resolve(null),
+      ])
+        .then(([f, , s]) => {
+          setForms(f);
+          setSuggestions(s);
+          // A link such as /wnioski?form=civil_registry_extract opens that form straight away.
+          const wanted = new URLSearchParams(window.location.search).get(
+            "form",
+          );
+          const definition = f.find((item) => item.code === wanted);
+          if (definition) setEditing({ definition, data: {}, step: 0 });
+        })
+        .catch((e: Error) => setError(e.message));
+    });
   }, [refresh]);
 
-  const definitionOf = (code: string) => forms.find((f) => f.code === code);
+  const definitionOf = (code: string) =>
+    forms.find((f) => f.code === code.split(":")[0]);
 
+  /** Opens a form; an existing draft of the same form (and parent) continues where it stopped. */
   function open(code: string, data: FormData = {}, step = 0) {
     const definition = definitionOf(code);
     if (!definition) return;
+    const draft = drafts.find(
+      (d) => d.form_code === draftKey(definition, data) || d.form_code === code,
+    );
     setNotice(null);
-    setEditing({ definition, data, step });
-    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+    setEditing(
+      draft
+        ? { definition, data: { ...data, ...draft.data }, step: draft.step }
+        : { definition, data, step },
+    );
+    requestAnimationFrame(() =>
+      window.scrollTo({ top: 0, behavior: "smooth" }),
+    );
   }
 
   async function advance(id: number) {
@@ -83,16 +114,26 @@ export function ApplicationsView() {
       await advanceApplication(id);
       await refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się zmienić statusu.");
+      setError(
+        e instanceof Error ? e.message : "Nie udało się zmienić statusu.",
+      );
     } finally {
       setBusyId(null);
     }
   }
 
+  const filedFor = (s: Suggestion) =>
+    applications.find(
+      (a) =>
+        a.form_code === s.form_code &&
+        (a.person === null || a.person === s.person) &&
+        a.created_at,
+    );
+
   if (editing) {
     return (
       <ApplicationForm
-        key={editing.definition.code}
+        key={`${editing.definition.code}-${String(editing.data.applicant_role ?? "")}`}
         definition={editing.definition}
         initialData={editing.data}
         initialStep={editing.step}
@@ -115,18 +156,26 @@ export function ApplicationsView() {
   return (
     <div className="flex flex-col gap-8">
       {error && (
-        <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
+        <div
+          role="alert"
+          className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm"
+        >
           {error}
         </div>
       )}
-      {notice && <div className="rounded-xl border border-primary/40 bg-secondary p-4 text-sm">{notice}</div>}
+      {notice && (
+        <div className="rounded-xl border border-primary/40 bg-secondary p-4 text-sm">
+          {notice}
+        </div>
+      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Wnioski do złożenia</h2>
         {!hasProfile && (
           <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed p-5 text-sm">
             <p>
-              Policz najpierw uprawnienia – podpowiemy, jakie wnioski złożyć, i wypełnimy je danymi z wyliczenia.
+              Policz najpierw uprawnienia – podpowiemy, jakie wnioski złożyć, i
+              wypełnimy je danymi z wyliczenia.
             </p>
             <Button asChild>
               <Link href={PUBLIC_PATHS.calculator}>Sprawdź uprawnienia</Link>
@@ -134,33 +183,76 @@ export function ApplicationsView() {
           </div>
         )}
         {suggestions && suggestions.length === 0 && (
-          <p className="text-sm text-muted-foreground">Z tego wyliczenia nie wynikają wnioski do złożenia.</p>
+          <p className="text-sm text-muted-foreground">
+            Z tego wyliczenia nie wynikają wnioski do złożenia.
+          </p>
         )}
         <div className="grid gap-3 sm:grid-cols-2">
           {suggestions?.map((s) => (
             <Card key={`${s.form_code}-${s.person}`}>
               <CardHeader>
                 <CardTitle className="text-base">{s.title_pl}</CardTitle>
-                <CardDescription>Adresat: {TO_LABEL[s.submitted_to]}</CardDescription>
+                <CardDescription>
+                  Adresat: {TO_LABEL[s.submitted_to]}
+                </CardDescription>
               </CardHeader>
               <CardContent className="mt-auto flex flex-col gap-3">
                 {s.deadline && s.days_left !== null && (
-                  <p className="text-sm">
-                    Najpóźniej do {formatDate(s.deadline)} ({formatDaysLeft(s.days_left)})
+                  <p
+                    className={
+                      s.status === "overdue"
+                        ? "text-sm font-bold text-destructive"
+                        : "text-sm"
+                    }
+                  >
+                    {s.status === "overdue"
+                      ? `Termin minął ${formatDate(s.deadline)}`
+                      : `Najpóźniej do ${formatDate(s.deadline)} (${formatDaysLeft(s.days_left)})`}
                   </p>
                 )}
-                <Button onClick={() => open(s.form_code, s.prefill)}>
-                  <FilePlus2 /> Wypełnij wniosek
+                {s.status === "overdue" && s.late_pl && !filedFor(s) && (
+                  <p className="border-l-[5px] border-amber-500 bg-amber-50 p-2 text-sm">
+                    <span className="font-bold">Co możesz zrobić: </span>
+                    {s.late_pl}
+                  </p>
+                )}
+                {filedFor(s) && (
+                  <p className="text-sm text-primary">
+                    Złożony {formatDate(filedFor(s)!.created_at!.slice(0, 10))}{" "}
+                    · {STATUS_LABEL[filedFor(s)!.status].toLowerCase()}
+                  </p>
+                )}
+                <Button
+                  variant={filedFor(s) ? "outline" : "default"}
+                  onClick={() => open(s.form_code, s.prefill)}
+                >
+                  <FilePlus2 />{" "}
+                  {filedFor(s)
+                    ? "Złóż kolejny"
+                    : drafts.some(
+                          (d) =>
+                            d.form_code === `${s.form_code}:${s.person}` ||
+                            d.form_code === s.form_code,
+                        )
+                      ? "Kontynuuj wniosek"
+                      : "Wypełnij wniosek"}
                 </Button>
               </CardContent>
             </Card>
           ))}
         </div>
         <details className="text-sm">
-          <summary className="cursor-pointer text-muted-foreground">Inny wniosek</summary>
+          <summary className="cursor-pointer text-muted-foreground">
+            Inny wniosek
+          </summary>
           <div className="mt-3 flex flex-wrap gap-2">
             {forms.map((f) => (
-              <Button key={f.code} variant="outline" size="sm" onClick={() => open(f.code)}>
+              <Button
+                key={f.code}
+                variant="outline"
+                size="sm"
+                onClick={() => open(f.code)}
+              >
                 {f.title_pl}
               </Button>
             ))}
@@ -173,14 +265,30 @@ export function ApplicationsView() {
           <h2 className="text-xl font-semibold">Wersje robocze</h2>
           <ul className="flex flex-col gap-2">
             {drafts.map((d) => (
-              <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
+              <li
+                key={d.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3"
+              >
                 <div>
-                  <p className="font-medium">{definitionOf(d.form_code)?.title_pl ?? d.form_code}</p>
+                  <p className="font-medium">
+                    {d.form_code.endsWith(":father")
+                      ? "Tata: "
+                      : d.form_code.endsWith(":mother")
+                        ? "Mama: "
+                        : ""}
+                    {definitionOf(d.form_code)?.title_pl ?? d.form_code}
+                  </p>
                   {d.updated_at && (
-                    <p className="text-xs text-muted-foreground">Zapisano {formatDate(d.updated_at.slice(0, 10))}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Zapisano {formatDate(d.updated_at.slice(0, 10))}
+                    </p>
                   )}
                 </div>
-                <Button variant="outline" size="sm" onClick={() => open(d.form_code, d.data, d.step)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => open(d.form_code, d.data, d.step)}
+                >
                   Kontynuuj
                 </Button>
               </li>
@@ -191,19 +299,31 @@ export function ApplicationsView() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Złożone wnioski</h2>
-        {applications.length === 0 && <p className="text-sm text-muted-foreground">Nie złożono jeszcze żadnego wniosku.</p>}
+        {applications.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            Nie złożono jeszcze żadnego wniosku.
+          </p>
+        )}
         <ul className="flex flex-col gap-3">
           {applications.map((a) => (
             <li key={a.id} className="rounded-lg border p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-medium">{a.title_pl}</p>
-                <Badge variant={a.status === "decided" ? "default" : "secondary"}>{STATUS_LABEL[a.status]}</Badge>
+                <Badge
+                  variant={a.status === "decided" ? "default" : "secondary"}
+                >
+                  {STATUS_LABEL[a.status]}
+                </Badge>
               </div>
-              <p className="text-xs text-muted-foreground">Adresat: {a.submitted_to ? TO_LABEL[a.submitted_to] : "–"}</p>
+              <p className="text-xs text-muted-foreground">
+                Adresat: {a.submitted_to ? TO_LABEL[a.submitted_to] : "–"}
+              </p>
               <ol className="mt-3 flex flex-col gap-1 border-l-2 border-primary/40 pl-3 text-sm">
                 {a.history.map((h) => (
                   <li key={h.at + h.status}>
-                    <span className="text-xs text-muted-foreground">{h.at.slice(0, 10)} · </span>
+                    <span className="text-xs text-muted-foreground">
+                      {h.at.slice(0, 10)} ·{" "}
+                    </span>
                     {h.note}
                   </li>
                 ))}
@@ -216,7 +336,11 @@ export function ApplicationsView() {
                   onClick={() => advance(a.id)}
                   disabled={busyId === a.id}
                 >
-                  {busyId === a.id ? <Loader2 className="animate-spin" /> : <Play />}
+                  {busyId === a.id ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Play />
+                  )}
                   Symuluj kolejny etap
                 </Button>
               )}
@@ -224,8 +348,8 @@ export function ApplicationsView() {
           ))}
         </ul>
         <p className="text-xs text-muted-foreground">
-          Przycisk „Symuluj kolejny etap” działa tylko w demonstracji – w prawdziwym systemie status zmienia
-          pracodawca lub ZUS.
+          Przycisk „Symuluj kolejny etap” działa tylko w demonstracji – w
+          prawdziwym systemie status zmienia pracodawca lub ZUS.
         </p>
       </section>
     </div>

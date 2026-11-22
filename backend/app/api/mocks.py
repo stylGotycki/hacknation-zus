@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from app.api.parameters import parameters_valid_on
@@ -47,9 +47,19 @@ def citizens() -> list[dict]:
 
 
 @router.post("/mobywatel/login", response_model=LoginOut)
-def login(body: LoginIn) -> dict:
+def login(
+    body: LoginIn,
+    db: DbSession,
+    guest: Annotated[str | None, Header(alias="X-Owner-Id")] = None,
+) -> dict:
+    """Logs the persona in; what the guest prepared before logging in moves to the account."""
+    from app.api.applications import merge_owner
+
     scenario = _scenario(body.citizen_id)
-    return {"owner_id": f"mobywatel-{body.citizen_id}", "citizen": data.citizen_card(scenario)}
+    owner = f"mobywatel-{body.citizen_id}"
+    if guest and not guest.startswith("mobywatel-"):
+        merge_owner(db, guest, owner)
+    return {"owner_id": owner, "citizen": data.citizen_card(scenario)}
 
 
 @router.get("/zus/{citizen_id}/insurance")

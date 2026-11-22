@@ -90,6 +90,7 @@ class RuleIn(BaseModel):
     payer: str | None = None
     apply_to_pl: str = ""
     deadline_kind: str | None = None
+    late_text_pl: str = ""
     legal_basis: str = ""
     source: str = ""
     description_pl: str = ""

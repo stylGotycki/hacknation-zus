@@ -95,7 +95,8 @@ def test_admin_sets_application_status_with_note(client):
         "employer_name": "C",
         "leave_start": "2026-12-01",
         "leave_end": "2026-12-14",
-        "child_date": "2026-11-30",
+        "place": "X",
+        "used_before": "no",
         "declaration": True,
     }
     app_id = client.post(
@@ -137,7 +138,8 @@ def test_change_today_applies_to_new_applications_only(client):
         "employer_name": "C",
         "leave_start": "2026-12-01",
         "leave_end": "2026-12-14",
-        "child_date": "2026-11-30",
+        "place": "X",
+        "used_before": "no",
         "declaration": True,
     }
     client.post(

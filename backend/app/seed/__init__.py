@@ -87,6 +87,7 @@ def seed_rules(db: Session) -> int:
             "legal_basis": values.get("legal_basis") or "",
             "source": values.get("source") or "",
             "description_pl": values.get("description_pl") or "",
+            "late_text_pl": values.get("late_text_pl") or "",
             "order": values.get("order") or 0,
         }
         if row is None:
