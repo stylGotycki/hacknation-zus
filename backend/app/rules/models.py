@@ -207,6 +207,7 @@ class LeavePeriod(BaseModel):
     work_fraction: float = 0
     payer: Literal["employer", "zus"] | None = None
     rule: str | None = None  # code of the rule that produced the period
+    raised_to_minimum: bool = False  # allowance raised to the parental benefit amount (UZ art. 31 ust. 3a)
 
 
 class BenefitResult(BaseModel):

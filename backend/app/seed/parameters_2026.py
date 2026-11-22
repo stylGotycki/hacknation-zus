@@ -249,9 +249,10 @@ PARAMETERS: list[dict] = [
     ),
     p(
         "parental_benefit_amount",
-        None,
+        1000.0,
         "Kwota świadczenia rodzicielskiego, do której podwyższa się zasiłek macierzyński (art. 31 ust. 3a). "
-        "Żadne z sześciu źródeł nie podaje kwoty – wpisz ją, aby silnik pokazywał podwyższenie.",
+        "Kwota (1000 zł) pochodzi z ustawy o świadczeniach rodzinnych, spoza sześciu źródeł – do potwierdzenia; "
+        "silnik podwyższa do niej miesięczny zasiłek (porównanie brutto, bez zaliczki na podatek).",
         f"{UZ}, art. 31 ust. 3a–3c (kwota: ustawa o świadczeniach rodzinnych)",
     ),
     # --- Uprawnienia i płatnik -----------------------------------------------------------------

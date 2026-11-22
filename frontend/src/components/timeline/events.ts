@@ -43,6 +43,11 @@ export function periodLines(p: LeavePeriod): string[] {
   if (p.paid && p.monthly_gross !== null) {
     lines.push(`ok. ${formatPln(p.monthly_gross)} brutto miesięcznie`);
   }
+  if (p.raised_to_minimum) {
+    lines.push(
+      "Zasiłek podwyższony do kwoty świadczenia rodzicielskiego (miesięcznie)",
+    );
+  }
   if (!p.paid) lines.push("Bez zasiłku z ubezpieczenia chorobowego");
   return lines;
 }

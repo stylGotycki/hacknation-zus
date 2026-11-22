@@ -102,3 +102,7 @@ Jedno miejsce na „co z moimi pieniędzmi i urlopem”:
 - **Skąd te kwoty?** Z parametrów prawnych na dzień wyliczenia; każda karta wyniku podaje podstawę prawną.
 - **Becikowe nie pochodzi z przepisów zadania** – kwotę i terminy trzeba potwierdzić na gov.pl.
 - **Gdzie zmienić stawkę albo regułę?** W panelu administratora – zob. [`instrukcja-admina.md`](instrukcja-admina.md).
+
+## Wczytaj przykładową sprawę
+
+Na górze kalkulatora rozwiń „Wczytaj przykładową sprawę”, wybierz jedną z 15 gotowych spraw (S1–S15, oparte na typach spraw z przykładów ZUS), kliknij „Wczytaj i policz”. Kalkulator wypełni się danymi i przejdzie do wyniku; dane można zmienić i policzyć ponownie. Nic nie jest wczytywane z plików – to wybór z listy.

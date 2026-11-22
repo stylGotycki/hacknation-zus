@@ -40,7 +40,14 @@ def _basis(text: str | None) -> list[str]:
     return [part.strip() for part in (text or "").split(";") if part.strip()]
 
 
-def _periods(run: RunResult, scope: Mapping[str, Any], divisor: float) -> list[LeavePeriod]:
+def _periods(
+    run: RunResult, scope: Mapping[str, Any], divisor: float, floor: float | None = None
+) -> list[LeavePeriod]:
+    """Builds the leave periods; `floor` is the monthly amount an allowance is raised to when lower.
+
+    The law compares the allowance after the income tax advance with the parental benefit; tax is not
+    part of the six sources, so the gross monthly amount is compared (a lower bound of the raise).
+    """
     out = []
     for p in sorted(run.periods, key=lambda x: (x["start"], x["rule"].code)):
         person = p["osoba"] or "family"
@@ -50,6 +57,9 @@ def _periods(run: RunResult, scope: Mapping[str, Any], divisor: float) -> list[L
         monthly = (
             round(base * rate * (1 - work), 2) if base is not None and rate is not None else None
         )
+        raised = bool(floor and monthly is not None and work == 0 and monthly < floor)
+        if raised:
+            monthly = round(floor, 2)
         total = round(monthly / divisor * p["dni"], 2) if monthly is not None else None
         out.append(
             LeavePeriod(
@@ -69,9 +79,15 @@ def _periods(run: RunResult, scope: Mapping[str, Any], divisor: float) -> list[L
                 work_fraction=work,
                 payer=PAYER.get(p.get("platnik") or ""),
                 rule=p["rule"].code,
+                raised_to_minimum=raised,
             )
         )
     return out
+
+
+def _floor(params: Mapping[str, Any]) -> float | None:
+    value = params.get("parental_benefit_amount")
+    return float(value) if value else None
 
 
 def _month_end(d: date) -> date:
@@ -144,7 +160,7 @@ def _family_total(rules, params, profile, today, divisor) -> float | None:
         run = _run(rules, params, profile, today)
     except PlanViolation:
         return None
-    periods = _periods(run, run.scope, divisor)
+    periods = _periods(run, run.scope, divisor, _floor(params))
     if any(p.total_gross is None for p in periods if p.kind in ("maternity", "parental")):
         return None
     return round(sum(p.total_gross or 0 for p in periods if p.kind in ("maternity", "parental")), 2)
@@ -165,7 +181,7 @@ def evaluate_profile(
     run = Runtime(rules, params, today).run(facts)
     scope = run.scope
     divisor = float(params.get("benefit_daily_divisor") or 30)
-    timeline = _periods(run, scope, divisor)
+    timeline = _periods(run, scope, divisor, _floor(params))
 
     # --- Calculation bases --------------------------------------------------------------------
     bases = []

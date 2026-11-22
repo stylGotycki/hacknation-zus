@@ -569,3 +569,23 @@ def test_expression_language_basics():
     assert ev.eval("dodaj_dni(dzis(), 1)") == TODAY + timedelta(days=1)
     assert ev.eval("param('p') * tygodnie(1)") == 14
     assert references("mama.dni + inna_regula") == {"mama", "inna_regula"}
+
+
+def test_low_allowance_is_raised_to_the_parental_benefit_amount():
+    """UZ art. 31 ust. 3a–3c, Poradnik s.19: a monthly allowance below the parental benefit is raised to it."""
+    low = {
+        "child": {"birth_date": "2026-03-10"},
+        "mother": {
+            "employment": "self_employed",
+            "sickness_insurance": "voluntary",
+            "average_monthly_base": 1000,
+            "insured_days": 400,
+        },
+    }
+    r = run(low)
+    for p in periods(r, "mother"):
+        assert p.raised_to_minimum and p.monthly_gross == 1000.0, p
+    r = run({**low, "mother": {**low["mother"], "average_monthly_base": 6000}})
+    assert not any(p.raised_to_minimum for p in r.timeline)
+    r = run(low, **{"parental_benefit_amount": None})
+    assert not any(p.raised_to_minimum for p in r.timeline)

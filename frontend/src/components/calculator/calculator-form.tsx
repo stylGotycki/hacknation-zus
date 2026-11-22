@@ -22,6 +22,7 @@ import {
 } from "@/lib/last-result";
 import { PUBLIC_PATHS } from "@/lib/routes";
 import { CalculatorResults } from "./calculator-results";
+import { SampleCases } from "./sample-cases";
 import {
   FormState,
   INITIAL,
@@ -149,6 +150,19 @@ export function CalculatorForm() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  /** A ready-made case: fill the whole form, jump to the last step and calculate. */
+  async function loadSampleCase(profile: FamilyProfile) {
+    const state = formFromProfile(profile);
+    const last = stepsFor(state).length - 1;
+    setForm(state);
+    setStep(last);
+    setTried(false);
+    saveLastForm(state);
+    saveLastStep(last);
+    await calculateFor(state);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function go(i: number) {
     setStep(i);
     setTried(false);
@@ -157,6 +171,7 @@ export function CalculatorForm() {
 
   return (
     <div className="flex flex-col gap-6">
+      <SampleCases onLoad={(profile) => void loadSampleCase(profile)} />
       <Stepper
         steps={steps}
         current={Math.min(step, steps.length - 1)}

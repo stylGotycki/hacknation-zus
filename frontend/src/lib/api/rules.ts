@@ -150,6 +150,8 @@ export type LeavePeriod = {
   work_fraction: number;
   payer: "employer" | "zus" | null;
   rule: string | null;
+  /** Allowance raised to the parental benefit amount (UZ art. 31 ust. 3a). */
+  raised_to_minimum?: boolean;
 };
 
 export type Risk = {
@@ -240,3 +242,13 @@ export function evaluateFamily(profile: FamilyProfile, date?: string) {
     body: JSON.stringify(profile),
   });
 }
+
+/** A ready-made case (built from the types of cases ZUS supplied) – GET /api/scenarios. */
+export type SampleCase = {
+  id: string;
+  title_pl: string;
+  description_pl: string;
+  tags: string[];
+  profile: FamilyProfile;
+};
+export const listSampleCases = () => api<SampleCase[]>("/scenarios");
