@@ -18,6 +18,16 @@ router = APIRouter(tags=["applications"])
 
 # Until the mObywatel mock (E7) provides real identities, the browser sends any stable id.
 OwnerId = Annotated[str, Header(alias="X-Owner-Id")]
+
+
+def _require_login(owner: str) -> None:
+    """Filing and drafting need a (simulated) mObywatel login; a guest only gets suggestions."""
+    if not owner.startswith("mobywatel-"):
+        raise HTTPException(
+            status_code=401, detail="Zaloguj się przez mObywatel, aby składać wnioski."
+        )
+
+
 OptionalOwner = Annotated[str | None, Header(alias="X-Owner-Id")]
 
 STATUS_FLOW = ["submitted", "in_progress", "decided"]
@@ -63,18 +73,65 @@ def get_form(code: str) -> FormDefinition:
 
 
 def identity_of(owner: str | None) -> dict | None:
-    """The logged-in mObywatel citizen: name, PESEL and which parent they are (for prefilling)."""
+    """The logged-in citizen: name, PESEL and which parent they are (for prefilling)."""
     from app.mocks import data
-    from app.seed.scenarios import load_scenarios
+    from app.mocks.personas import personas
 
     if not owner or not owner.startswith("mobywatel-"):
         return None
     citizen_id = owner.removeprefix("mobywatel-")
-    scenario = next((s for s in load_scenarios() if s["id"] == citizen_id), None)
-    if scenario is None or citizen_id not in data.CITIZENS:
+    persona = next((p for p in personas() if p["id"] == citizen_id), None)
+    if persona is None:
         return None
-    role, _ = data.parent_data(scenario["profile"])
+    role, _ = data.parent_data(persona["profile"])
     return {**data.CITIZENS[citizen_id], "role": role}
+
+
+# What the guide remembers about each parent, so it is typed only once (family.profile["contacts"]).
+PERSON_KEYS = (
+    "first_name", "last_name", "pesel", "address", "phone", "employer_name", "employer_address",
+    "place", "bank_account", "payer_nip", "payer_regon", "payer_name", "payer_address",
+)  # fmt: skip
+OTHER_PARENT_KEYS = {
+    "other_first_name": "first_name",
+    "other_last_name": "last_name",
+    "other_pesel": "pesel",
+    "other_address": "address",
+}
+
+
+def harvest_contacts(family: Family, definition: FormDefinition, data: dict[str, Any]) -> None:
+    """Remembers the people typed into a form: the applicant, and the other parent (e.g. the husband).
+
+    The next forms of this family are prefilled with them, whichever parent files them.
+    """
+    role = role_of(definition, data)
+    contacts = {k: dict(v) for k, v in ((family.profile or {}).get("contacts") or {}).items()}
+    if role in ("mother", "father"):
+        mine = {k: data[k] for k in PERSON_KEYS if data.get(k) not in (None, "")}
+        contacts[role] = {**contacts.get(role, {}), **mine}
+        other = "father" if role == "mother" else "mother"
+        theirs = {v: data[k] for k, v in OTHER_PARENT_KEYS.items() if data.get(k) not in (None, "")}
+        if theirs:
+            contacts[other] = {**contacts.get(other, {}), **theirs}
+    family.profile = {**(family.profile or {}), "contacts": contacts}
+
+
+def known_people(family: Family, owner: str | None) -> dict[str, dict[str, Any]]:
+    """The mObywatel identity of the logged-in parent, completed with what was typed earlier."""
+    people = {k: dict(v) for k, v in ((family.profile or {}).get("contacts") or {}).items()}
+    identity = identity_of(owner)
+    if identity:
+        role = identity["role"]
+        own = {k: identity[k] for k in ("first_name", "last_name", "pesel")}
+        people[role] = {**people.get(role, {}), **own}
+    return {"mother": people.get("mother", {}), "father": people.get("father", {})}
+
+
+@router.get("/people")
+def people(owner: OwnerId, db: DbSession) -> dict[str, dict[str, Any]]:
+    """Data of both parents known so far (identity + earlier forms), for prefilling new forms."""
+    return known_people(_family(db, owner), owner)
 
 
 @router.post("/applications/suggestions", response_model=list[Suggestion])
@@ -85,7 +142,8 @@ def suggestions(
     from app.api.rules import run_evaluation
 
     result = run_evaluation(db, profile, on)
-    return suggest(result, profile.model_dump(mode="json"), identity_of(owner))
+    known = known_people(_family(db, owner), owner) if owner else None
+    return suggest(result, profile.model_dump(mode="json"), identity_of(owner), known)
 
 
 # --- Drafts ------------------------------------------------------------------------------
@@ -117,8 +175,10 @@ def list_drafts(owner: OwnerId, db: DbSession) -> list[ApplicationDraft]:
 @router.put("/drafts/{code}", response_model=DraftOut)
 def save_draft(code: str, body: DraftIn, owner: OwnerId, db: DbSession) -> ApplicationDraft:
     """One draft per form and family: saving again overwrites it."""
-    _definition(code)
+    _require_login(owner)
+    definition = _definition(code)
     family = _family(db, owner)
+    harvest_contacts(family, definition, body.data)
     draft = db.scalar(
         select(ApplicationDraft).where(
             ApplicationDraft.family_id == family.id, ApplicationDraft.form_code == code
@@ -207,11 +267,13 @@ def list_applications(owner: OwnerId, db: DbSession) -> list[ApplicationOut]:
 @router.post("/applications", response_model=ApplicationOut, status_code=201)
 def submit_application(body: ApplicationIn, owner: OwnerId, db: DbSession) -> ApplicationOut:
     """Validates the required fields, stores the application and removes the draft."""
+    _require_login(owner)
     definition = _definition(body.form_code)
     missing = missing_fields(definition, body.data)
     if missing:
         raise HTTPException(422, f"Uzupełnij wymagane pola: {', '.join(missing)}")
     family = _family(db, owner)
+    harvest_contacts(family, definition, body.data)
     application = Application(
         family_id=family.id,
         form_code=body.form_code,
@@ -296,6 +358,7 @@ def merge_owner(db: DbSession, source: str, target: str) -> None:
 @router.post("/applications/{application_id}/advance", response_model=ApplicationOut)
 def advance_application(application_id: int, owner: OwnerId, db: DbSession) -> ApplicationOut:
     """Demo helper: moves the application to the next stage as the payer would."""
+    _require_login(owner)
     family = _family(db, owner)
     application = db.get(Application, application_id)
     if application is None or application.family_id != family.id:

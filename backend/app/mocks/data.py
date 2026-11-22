@@ -7,23 +7,7 @@ the scenario profile so that the numbers shown in the mocks agree with the rules
 import zlib
 from datetime import date, timedelta
 
-CITIZENS: dict[str, dict] = {
-    "S1": {"first_name": "Zofia", "last_name": "Lisowska", "pesel": "90021412345"},
-    "S2": {"first_name": "Anna", "last_name": "Lubicka", "pesel": "92050312345"},
-    "S3": {"first_name": "Marta", "last_name": "Gorecka", "pesel": "91111112345"},
-    "S4": {"first_name": "Ewa", "last_name": "Lewandowska", "pesel": "89070512345"},
-    "S5": {"first_name": "Agata", "last_name": "Gołębiowska", "pesel": "93032212345"},
-    "S6": {"first_name": "Zuzanna", "last_name": "Leśniak", "pesel": "94092912345"},
-    "S7": {"first_name": "Katarzyna", "last_name": "Łukasik", "pesel": "88041812345"},
-    "S8": {"first_name": "Jolanta", "last_name": "Grabowska", "pesel": "85120112345"},
-    "S9": {"first_name": "Natalia", "last_name": "Łaska", "pesel": "95010612345"},
-    "S10": {"first_name": "Alicja", "last_name": "Chojnacka", "pesel": "90082312345"},
-    "S11": {"first_name": "Dorota", "last_name": "Byczek", "pesel": "87061712345"},
-    "S12": {"first_name": "Weronika", "last_name": "Lubaś", "pesel": "93110912345"},
-    "S13": {"first_name": "Tomasz", "last_name": "Grzelak", "pesel": "88030412345"},
-    "S14": {"first_name": "Magdalena", "last_name": "Lipińska", "pesel": "86072012345"},
-    "S15": {"first_name": "Paulina", "last_name": "Leszczyńska", "pesel": "92121212345"},
-}
+from app.mocks.personas import CITIZENS
 
 TITLES = {
     "employee": ("0110", "Pracownik – umowa o pracę"),
@@ -39,6 +23,28 @@ def mask_pesel(pesel: str) -> str:
     return f"{pesel[:6]}*****"
 
 
+def pesel_valid(pesel: str) -> bool:
+    """11 digits and the PESEL check digit (weights 1-3-7-9-1-3-7-9-1-3)."""
+    if len(pesel) != 11 or not pesel.isdigit():
+        return False
+    weights = (1, 3, 7, 9, 1, 3, 7, 9, 1, 3)
+    total = sum(int(d) * w for d, w in zip(pesel[:10], weights, strict=True))
+    return (10 - total % 10) % 10 == int(pesel[10])
+
+
+def new_citizen_card(pesel: str, first_name: str, last_name: str) -> dict:
+    """Account of a person who logged in with their own PESEL: no data in the simulated ZUS."""
+    return {
+        "id": f"pesel-{pesel}",
+        "first_name": first_name,
+        "last_name": last_name,
+        "pesel_masked": mask_pesel(pesel),
+        "scenario_title_pl": "Własne konto",
+        "scenario_description_pl": "Brak danych w symulowanym ZUS – dane do kalkulatora wpisujesz ręcznie.",
+        "demo": False,
+    }
+
+
 def citizen_card(scenario: dict) -> dict:
     person = CITIZENS[scenario["id"]]
     return {
@@ -48,6 +54,7 @@ def citizen_card(scenario: dict) -> dict:
         "pesel_masked": mask_pesel(person["pesel"]),
         "scenario_title_pl": scenario["title_pl"],
         "scenario_description_pl": scenario["description_pl"],
+        "demo": True,
     }
 
 

@@ -17,6 +17,7 @@ import {
 import {
   advanceApplication,
   draftKey,
+  getPeople,
   getSuggestions,
   listApplications,
   listDrafts,
@@ -24,6 +25,7 @@ import {
   type ApplicationRecord,
   type ApplicationStatus,
   type Draft,
+  type People,
   type FamilyProfile,
   type FormData,
   type FormDefinition,
@@ -32,7 +34,7 @@ import {
 import { formatDate, formatDaysLeft } from "@/lib/format";
 import { loadLastProfile } from "@/lib/last-result";
 import { PUBLIC_PATHS } from "@/lib/routes";
-import { ensureRestored } from "@/lib/session";
+import { ensureRestored, loadCitizen } from "@/lib/session";
 
 const STATUS_LABEL: Record<ApplicationStatus, string> = {
   submitted: "Złożony",
@@ -57,15 +59,23 @@ export function ApplicationsView() {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [people, setPeople] = useState<People>({ mother: {}, father: {} });
 
   const refresh = useCallback(async () => {
-    const [d, a] = await Promise.all([listDrafts(), listApplications()]);
+    const [d, a, p] = await Promise.all([
+      listDrafts(),
+      listApplications(),
+      getPeople(),
+    ]);
     setDrafts(d);
     setApplications(a);
+    setPeople(p);
   }, []);
 
   useEffect(() => {
     void ensureRestored().then(() => {
+      setLoggedIn(loadCitizen() !== null);
       const profile = loadLastProfile<FamilyProfile>();
       setHasProfile(Boolean(profile));
       Promise.all([
@@ -81,7 +91,8 @@ export function ApplicationsView() {
             "form",
           );
           const definition = f.find((item) => item.code === wanted);
-          if (definition) setEditing({ definition, data: {}, step: 0 });
+          if (definition && loadCitizen())
+            setEditing({ definition, data: {}, step: 0 });
         })
         .catch((e: Error) => setError(e.message));
     });
@@ -137,6 +148,7 @@ export function ApplicationsView() {
         definition={editing.definition}
         initialData={editing.data}
         initialStep={editing.step}
+        people={people}
         onClose={() => {
           setEditing(null);
           void refresh();
@@ -171,6 +183,19 @@ export function ApplicationsView() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Wnioski do złożenia</h2>
+        {!loggedIn && (
+          <p className="border-l-[5px] border-navy bg-muted p-3 text-sm">
+            Bez logowania widzisz tylko, jakie wnioski możesz złożyć i w jakim
+            terminie.{" "}
+            <Link
+              className="font-bold text-primary underline"
+              href={PUBLIC_PATHS.login}
+            >
+              Zaloguj się przez mObywatel
+            </Link>
+            , aby je wypełnić i wysłać.
+          </p>
+        )}
         {!hasProfile && (
           <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed p-5 text-sm">
             <p>
@@ -197,7 +222,7 @@ export function ApplicationsView() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="mt-auto flex flex-col gap-3">
-                {s.deadline && s.days_left !== null && (
+                {s.deadline && s.days_left !== null && !filedFor(s) && (
                   <p
                     className={
                       s.status === "overdue"
@@ -222,42 +247,52 @@ export function ApplicationsView() {
                     · {STATUS_LABEL[filedFor(s)!.status].toLowerCase()}
                   </p>
                 )}
-                <Button
-                  variant={filedFor(s) ? "outline" : "default"}
-                  onClick={() => open(s.form_code, s.prefill)}
-                >
-                  <FilePlus2 />{" "}
-                  {filedFor(s)
-                    ? "Złóż kolejny"
-                    : drafts.some(
-                          (d) =>
-                            d.form_code === `${s.form_code}:${s.person}` ||
-                            d.form_code === s.form_code,
-                        )
-                      ? "Kontynuuj wniosek"
-                      : "Wypełnij wniosek"}
-                </Button>
+                {loggedIn ? (
+                  <Button
+                    variant={filedFor(s) ? "outline" : "default"}
+                    onClick={() => open(s.form_code, s.prefill)}
+                  >
+                    <FilePlus2 />{" "}
+                    {filedFor(s)
+                      ? "Złóż kolejny"
+                      : drafts.some(
+                            (d) =>
+                              d.form_code === `${s.form_code}:${s.person}` ||
+                              d.form_code === s.form_code,
+                          )
+                        ? "Kontynuuj wniosek"
+                        : "Wypełnij wniosek"}
+                  </Button>
+                ) : (
+                  <Button variant="outline" asChild>
+                    <Link href={PUBLIC_PATHS.login}>
+                      Zaloguj się, aby złożyć wniosek
+                    </Link>
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ))}
         </div>
-        <details className="text-sm">
-          <summary className="cursor-pointer text-muted-foreground">
-            Inny wniosek
-          </summary>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {forms.map((f) => (
-              <Button
-                key={f.code}
-                variant="outline"
-                size="sm"
-                onClick={() => open(f.code)}
-              >
-                {f.title_pl}
-              </Button>
-            ))}
-          </div>
-        </details>
+        {loggedIn && (
+          <details className="text-sm">
+            <summary className="cursor-pointer text-muted-foreground">
+              Inny wniosek
+            </summary>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {forms.map((f) => (
+                <Button
+                  key={f.code}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => open(f.code)}
+                >
+                  {f.title_pl}
+                </Button>
+              ))}
+            </div>
+          </details>
+        )}
       </section>
 
       {drafts.length > 0 && (

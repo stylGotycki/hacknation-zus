@@ -17,7 +17,7 @@ from app.rules.models import EvaluationResult, FamilyProfile
 
 def seed_rule_defs() -> list[RuleDef]:
     from app.engine.store import to_def
-    from app.seed.rules_2026 import all_rules
+    from app.seed.rules import all_rules
 
     return [to_def(r) for r in all_rules()]
 

@@ -5,7 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/form-controls";
-import { AdminError, adminTestRules, api, type FamilyProfile, type RuleTestResult } from "@/lib/api";
+import {
+  AdminError,
+  adminTestRules,
+  api,
+  type FamilyProfile,
+  type RuleTestResult,
+} from "@/lib/api";
 import { formatDate, formatPln } from "@/lib/format";
 
 type Scenario = { id: string; title_pl: string; profile: FamilyProfile };
@@ -40,7 +46,13 @@ export function TestTab({ token }: { token: string }) {
       setOut(await adminTestRules(token, JSON.parse(json)));
     } catch (err) {
       setOut(null);
-      setError(err instanceof SyntaxError ? "Profil nie jest poprawnym JSON-em." : err instanceof AdminError ? err.message : "Błąd");
+      setError(
+        err instanceof SyntaxError
+          ? "Profil nie jest poprawnym JSON-em."
+          : err instanceof AdminError
+            ? err.message
+            : "Błąd",
+      );
     } finally {
       setBusy(false);
     }
@@ -48,7 +60,10 @@ export function TestTab({ token }: { token: string }) {
 
   const values = useMemo(
     () =>
-      Object.entries(out?.values ?? {}).filter(([k, v]) => !filter || k.includes(filter) || JSON.stringify(v).includes(filter)),
+      Object.entries(out?.values ?? {}).filter(
+        ([k, v]) =>
+          !filter || k.includes(filter) || JSON.stringify(v).includes(filter),
+      ),
     [out, filter],
   );
 
@@ -57,7 +72,17 @@ export function TestTab({ token }: { token: string }) {
       <div className="flex flex-col gap-2">
         <label className="flex flex-col gap-1">
           <span className="font-bold">Persona</span>
-          <Select onChange={(e) => setJson(JSON.stringify(scenarios.find((s) => s.id === e.target.value)?.profile, null, 2))}>
+          <Select
+            onChange={(e) =>
+              setJson(
+                JSON.stringify(
+                  scenarios.find((s) => s.id === e.target.value)?.profile,
+                  null,
+                  2,
+                ),
+              )
+            }
+          >
             {scenarios.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.id} – {s.title_pl}
@@ -76,12 +101,21 @@ export function TestTab({ token }: { token: string }) {
           />
         </label>
         <Button type="button" onClick={run} disabled={busy}>
-          {busy ? <Loader2 className="animate-spin" /> : <Play />} Uruchom reguły
+          {busy ? <Loader2 className="animate-spin" /> : <Play />} Uruchom
+          reguły
         </Button>
-        {error && <p role="alert" className="text-destructive">{error}</p>}
+        {error && (
+          <p role="alert" className="text-destructive">
+            {error}
+          </p>
+        )}
       </div>
       <div className="flex min-w-0 flex-col gap-4">
-        {!out && <p className="text-muted-foreground">Wybierz personę albo wklej profil i uruchom reguły.</p>}
+        {!out && (
+          <p className="text-muted-foreground">
+            Wybierz personę albo wklej profil i uruchom reguły.
+          </p>
+        )}
         {out && !out.ok && (
           <p role="alert" className="rounded-md bg-destructive/10 p-3">
             <b>Plan odrzucony (walidacja):</b> {out.violation}
@@ -90,29 +124,42 @@ export function TestTab({ token }: { token: string }) {
         {out?.result && (
           <>
             <section>
-              <h2 className="border-b-2 border-primary pb-1 text-base font-bold">Świadczenia</h2>
+              <h2 className="border-b-2 border-primary pb-1 text-base font-bold">
+                Świadczenia
+              </h2>
               <ul>
                 {out.result.benefits.map((b) => (
                   <li key={b.code} className="border-b border-border py-1">
-                    <b>{b.title_pl}</b> – {STATUS[b.status]} {b.total_gross != null && <>· {formatPln(b.total_gross)}</>}
-                    <span className="block text-muted-foreground">{b.summary_pl}</span>
+                    <b>{b.title_pl}</b> – {STATUS[b.status]}{" "}
+                    {b.total_gross != null && <>· {formatPln(b.total_gross)}</>}
+                    <span className="block text-muted-foreground">
+                      {b.summary_pl}
+                    </span>
                   </li>
                 ))}
               </ul>
             </section>
             <section>
-              <h2 className="border-b-2 border-primary pb-1 text-base font-bold">Okresy</h2>
+              <h2 className="border-b-2 border-primary pb-1 text-base font-bold">
+                Okresy
+              </h2>
               <table className="w-full">
                 <tbody>
                   {out.result.timeline.map((p) => (
                     <tr key={p.id} className="border-b border-border">
-                      <td className="py-1 pr-2 font-mono text-[12px]">{p.rule}</td>
+                      <td className="py-1 pr-2 font-mono text-[12px]">
+                        {p.rule}
+                      </td>
                       <td className="py-1 pr-2">{p.label_pl}</td>
                       <td className="whitespace-nowrap py-1 pr-2">
                         {formatDate(p.start)} – {formatDate(p.end)}
                       </td>
                       <td className="py-1 pr-2">{p.days} dni</td>
-                      <td className="py-1">{p.rate != null ? `${(p.rate * 100).toLocaleString("pl-PL")}%` : "–"}</td>
+                      <td className="py-1">
+                        {p.rate != null
+                          ? `${(p.rate * 100).toLocaleString("pl-PL")}%`
+                          : "–"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -120,7 +167,8 @@ export function TestTab({ token }: { token: string }) {
             </section>
             <section>
               <h2 className="border-b-2 border-primary pb-1 text-base font-bold">
-                Terminy, ryzyka ({out.result.deadlines.length} / {out.result.risks.length})
+                Terminy, ryzyka ({out.result.deadlines.length} /{" "}
+                {out.result.risks.length})
               </h2>
               <ul className="columns-1 md:columns-2">
                 {out.result.deadlines.map((d) => (
@@ -139,7 +187,9 @@ export function TestTab({ token }: { token: string }) {
         )}
         {out?.ok && (
           <section>
-            <h2 className="border-b-2 border-primary pb-1 text-base font-bold">Wartości wszystkich reguł ({values.length})</h2>
+            <h2 className="border-b-2 border-primary pb-1 text-base font-bold">
+              Wartości wszystkich reguł ({values.length})
+            </h2>
             {Object.keys(out.errors).length > 0 && (
               <ul className="my-2 rounded-md bg-destructive/10 p-2 font-mono text-[12px]">
                 {Object.entries(out.errors).map(([k, v]) => (
@@ -149,13 +199,20 @@ export function TestTab({ token }: { token: string }) {
                 ))}
               </ul>
             )}
-            <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filtruj" className="my-2 max-w-xs" />
+            <Input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Filtruj"
+              className="my-2 max-w-xs"
+            />
             <table className="w-full">
               <tbody>
                 {values.map(([k, v]) => (
                   <tr key={k} className="border-b border-border align-top">
                     <td className="py-0.5 pr-3 font-mono text-[12px]">{k}</td>
-                    <td className="break-all py-0.5 font-mono text-[12px] text-muted-foreground">{JSON.stringify(v)}</td>
+                    <td className="break-all py-0.5 font-mono text-[12px] text-muted-foreground">
+                      {JSON.stringify(v)}
+                    </td>
                   </tr>
                 ))}
               </tbody>

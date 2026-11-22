@@ -1,6 +1,14 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Check, ClipboardCheck, Loader2, Pencil, Save } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ClipboardCheck,
+  Loader2,
+  Pencil,
+  Save,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +21,7 @@ import {
   type FormData,
   type FormDefinition,
   type FormField,
+  type People,
 } from "@/lib/api";
 import { formatDate, toIsoDate } from "@/lib/format";
 import {
@@ -25,7 +34,19 @@ import {
 } from "@/lib/form-logic";
 import { cn } from "@/lib/utils";
 
-const SEND_LABEL = { zus: "Wyślij do ZUS", employer: "Wyślij do pracodawcy", registry: "Wyślij do urzędu" } as const;
+/** Fields of the other parent in a form -> the same fact in the parent's record. */
+const OTHER_PARENT_KEYS: Record<string, string> = {
+  other_first_name: "first_name",
+  other_last_name: "last_name",
+  other_pesel: "pesel",
+  other_address: "address",
+};
+
+const SEND_LABEL = {
+  zus: "Wyślij do ZUS",
+  employer: "Wyślij do pracodawcy",
+  registry: "Wyślij do urzędu",
+} as const;
 
 function FieldInput({
   field,
@@ -56,7 +77,10 @@ function FieldInput({
           onChange={(e) => onChange(e.target.value)}
         />
       ) : field.type === "select" ? (
-        <Select value={String(value ?? "")} onChange={(e) => onChange(e.target.value)}>
+        <Select
+          value={String(value ?? "")}
+          onChange={(e) => onChange(e.target.value)}
+        >
           <option value="">Wybierz…</option>
           {field.options?.map(([v, text]) => (
             <option key={v} value={v}>
@@ -71,7 +95,9 @@ function FieldInput({
           value={String(value ?? "")}
           onChange={(e) =>
             onChange(
-              field.type === "number" && e.target.value !== "" && !Number.isNaN(Number(e.target.value))
+              field.type === "number" &&
+                e.target.value !== "" &&
+                !Number.isNaN(Number(e.target.value))
                 ? Number(e.target.value)
                 : e.target.value,
             )
@@ -83,7 +109,13 @@ function FieldInput({
 }
 
 /** The request as it reads on paper: header, text, statements, attachments, signature. */
-function LetterPreview({ definition, data }: { definition: FormDefinition; data: FormData }) {
+function LetterPreview({
+  definition,
+  data,
+}: {
+  definition: FormDefinition;
+  data: FormData;
+}) {
   const text = (t: string) => renderText(t, definition, data);
   const body = shownParagraphs(definition.body, data);
   const attachments = shownParagraphs(definition.attachments, data);
@@ -119,7 +151,9 @@ function LetterPreview({ definition, data }: { definition: FormDefinition; data:
           </p>
         )}
       </div>
-      <h3 className="text-center font-sans text-lg font-bold">{definition.title_pl}</h3>
+      <h3 className="text-center font-sans text-lg font-bold">
+        {definition.title_pl}
+      </h3>
       {body.map((p) => (
         <p key={p.text_pl} className="indent-8">
           {text(p.text_pl)}
@@ -147,7 +181,9 @@ function LetterPreview({ definition, data }: { definition: FormDefinition; data:
           (podpis elektroniczny przy wysyłce)
         </p>
       </div>
-      <p className="font-sans text-xs text-muted-foreground">Podstawa prawna: {definition.legal_basis_pl}</p>
+      <p className="font-sans text-xs text-muted-foreground">
+        Podstawa prawna: {definition.legal_basis_pl}
+      </p>
     </article>
   );
 }
@@ -156,17 +192,22 @@ export function ApplicationForm({
   definition,
   initialData,
   initialStep,
+  people,
   onClose,
   onSubmitted,
 }: {
   definition: FormDefinition;
   initialData: FormData;
   initialStep: number;
+  people: People;
   onClose: () => void;
   onSubmitted: (application: ApplicationRecord) => void;
 }) {
   const [data, setData] = useState<FormData>(initialData);
-  const steps = useMemo(() => visibleSteps(definition, data), [definition, data]);
+  const steps = useMemo(
+    () => visibleSteps(definition, data),
+    [definition, data],
+  );
   const summaryIndex = steps.length; // the last page: summary, statements and confirmation
   const [step, setStep] = useState(Math.min(initialStep, summaryIndex));
   const [saved, setSaved] = useState<"idle" | "saving" | "saved">("idle");
@@ -175,6 +216,31 @@ export function ApplicationForm({
   const [tried, setTried] = useState(false);
   const dirty = useRef(false);
   const key = draftKey(definition, data);
+
+  // Fill what is already known about the applicant (and the other parent) into empty fields: the
+  // data of the husband or wife typed in an earlier form, or the mObywatel identity.
+  const role =
+    definition.roles.length === 1
+      ? definition.roles[0]
+      : (data.applicant_role as string | undefined);
+  useEffect(() => {
+    if (role !== "mother" && role !== "father") return;
+    const other = role === "mother" ? "father" : "mother";
+    const fields = new Set(
+      definition.steps.flatMap((st) => st.fields.map((f) => f.key)),
+    );
+    const known: FormData = {};
+    for (const [k, v] of Object.entries(people[role]))
+      if (fields.has(k)) known[k] = v;
+    for (const [formKey, k] of Object.entries(OTHER_PARENT_KEYS)) {
+      if (fields.has(formKey) && people[other][k])
+        known[formKey] = people[other][k];
+    }
+    setData((d) => {
+      const fill = Object.entries(known).filter(([k]) => isEmpty(d[k]));
+      return fill.length ? { ...d, ...Object.fromEntries(fill) } : d;
+    });
+  }, [role, people, definition]);
 
   // Autosave the draft (with the step) shortly after the user stops typing.
   useEffect(() => {
@@ -191,8 +257,12 @@ export function ApplicationForm({
   const atSummary = step >= summaryIndex;
   const current = steps[Math.min(step, steps.length - 1)];
   const confirmFields = [...definition.statements, TRUTH_FIELD];
-  const missing = (atSummary ? confirmFields : current.fields).filter((f) => f.required && isEmpty(data[f.key]));
-  const missingAnywhere = steps.flatMap((s) => s.fields.filter((f) => f.required && isEmpty(data[f.key])));
+  const missing = (atSummary ? confirmFields : current.fields).filter(
+    (f) => f.required && isEmpty(data[f.key]),
+  );
+  const missingAnywhere = steps.flatMap((s) =>
+    s.fields.filter((f) => f.required && isEmpty(data[f.key])),
+  );
 
   const set = (k: string, value: FormData[string]) => {
     dirty.current = true;
@@ -204,7 +274,9 @@ export function ApplicationForm({
     setError(null);
     setTried(false);
     setStep(to);
-    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+    requestAnimationFrame(() =>
+      window.scrollTo({ top: 0, behavior: "smooth" }),
+    );
   }
 
   function next() {
@@ -221,7 +293,11 @@ export function ApplicationForm({
     try {
       onSubmitted(await submitApplication(definition.code, data, key));
     } catch (e) {
-      setError(e instanceof Error ? e.message.replace(/^API \d+: /, "") : "Nie udało się złożyć wniosku.");
+      setError(
+        e instanceof Error
+          ? e.message.replace(/^API \d+: /, "")
+          : "Nie udało się złożyć wniosku.",
+      );
     } finally {
       setSending(false);
     }
@@ -231,7 +307,9 @@ export function ApplicationForm({
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-2">
         <h2 className="text-xl font-bold">{definition.title_pl}</h2>
-        <p className="text-sm text-muted-foreground">{definition.description_pl}</p>
+        <p className="text-sm text-muted-foreground">
+          {definition.description_pl}
+        </p>
         {definition.deadline_pl && (
           <p className="text-sm">
             <span className="font-bold">Termin: </span>
@@ -269,9 +347,17 @@ export function ApplicationForm({
             {current.fields.map((field) => (
               <div
                 key={field.key}
-                className={cn(field.type === "textarea" || field.type === "checkbox" ? "sm:col-span-2" : "")}
+                className={cn(
+                  field.type === "textarea" || field.type === "checkbox"
+                    ? "sm:col-span-2"
+                    : "",
+                )}
               >
-                <FieldInput field={field} value={data[field.key]} onChange={(v) => set(field.key, v)} />
+                <FieldInput
+                  field={field}
+                  value={data[field.key]}
+                  onChange={(v) => set(field.key, v)}
+                />
               </div>
             ))}
           </div>
@@ -283,9 +369,14 @@ export function ApplicationForm({
           <div className="flex items-start gap-3 border-l-[5px] border-primary bg-muted p-4 text-sm">
             <ClipboardCheck className="mt-0.5 size-5 shrink-0 text-primary" />
             <p>
-              Sprawdź wniosek przed wysłaniem. Tak będzie wyglądał dokument, który otrzyma{" "}
-              {definition.submitted_to === "zus" ? "ZUS" : definition.submitted_to === "employer" ? "pracodawca" : "urząd"}.
-              Jeśli coś się nie zgadza, kliknij „Popraw” przy danej części.
+              Sprawdź wniosek przed wysłaniem. Tak będzie wyglądał dokument,
+              który otrzyma{" "}
+              {definition.submitted_to === "zus"
+                ? "ZUS"
+                : definition.submitted_to === "employer"
+                  ? "pracodawca"
+                  : "urząd"}
+              . Jeśli coś się nie zgadza, kliknij „Popraw” przy danej części.
             </p>
           </div>
 
@@ -309,8 +400,22 @@ export function ApplicationForm({
                   {s.fields.map((f) => (
                     <div key={f.key} className="contents">
                       <dt className="text-muted-foreground">{f.label_pl}</dt>
-                      <dd className={cn("font-medium", isEmpty(data[f.key]) && f.type !== "checkbox" && "text-muted-foreground")}>
-                        {formatValue(f, data[f.key]) || (f.required ? <span className="text-destructive">brak – uzupełnij</span> : "–")}
+                      <dd
+                        className={cn(
+                          "font-medium",
+                          isEmpty(data[f.key]) &&
+                            f.type !== "checkbox" &&
+                            "text-muted-foreground",
+                        )}
+                      >
+                        {formatValue(f, data[f.key]) ||
+                          (f.required ? (
+                            <span className="text-destructive">
+                              brak – uzupełnij
+                            </span>
+                          ) : (
+                            "–"
+                          ))}
                       </dd>
                     </div>
                   ))}
@@ -333,36 +438,52 @@ export function ApplicationForm({
           <div className="flex flex-col gap-3 border-t border-band-border pt-4">
             <h3 className="font-bold">Oświadczenia</h3>
             {confirmFields.map((f) => (
-              <FieldInput key={f.key} field={f} value={data[f.key]} onChange={(v) => set(f.key, v)} />
+              <FieldInput
+                key={f.key}
+                field={f}
+                value={data[f.key]}
+                onChange={(v) => set(f.key, v)}
+              />
             ))}
           </div>
         </section>
       )}
 
       {error && (
-        <div role="alert" className="border border-destructive/40 bg-destructive/5 p-3 text-sm">
+        <div
+          role="alert"
+          className="border border-destructive/40 bg-destructive/5 p-3 text-sm"
+        >
           {error}
         </div>
       )}
-      {tried && (missing.length > 0 || (atSummary && missingAnywhere.length > 0)) && (
-        <p role="alert" className="bg-destructive/5 p-3 text-sm text-destructive">
-          {atSummary && missingAnywhere.length > 0
-            ? `Uzupełnij brakujące dane: ${missingAnywhere.map((f) => f.label_pl).join(", ")}.`
-            : atSummary
-              ? "Zaznacz oświadczenia, aby wysłać wniosek."
-              : "Uzupełnij pola oznaczone gwiazdką, aby przejść dalej."}
-        </p>
-      )}
+      {tried &&
+        (missing.length > 0 || (atSummary && missingAnywhere.length > 0)) && (
+          <p
+            role="alert"
+            className="bg-destructive/5 p-3 text-sm text-destructive"
+          >
+            {atSummary && missingAnywhere.length > 0
+              ? `Uzupełnij brakujące dane: ${missingAnywhere.map((f) => f.label_pl).join(", ")}.`
+              : atSummary
+                ? "Zaznacz oświadczenia, aby wysłać wniosek."
+                : "Uzupełnij pola oznaczone gwiazdką, aby przejść dalej."}
+          </p>
+        )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-band-border pt-4">
-        <Button variant="outline" onClick={step === 0 ? onClose : () => go(step - 1)}>
+        <Button
+          variant="outline"
+          onClick={step === 0 ? onClose : () => go(step - 1)}
+        >
           <ArrowLeft /> {step === 0 ? "Zamknij" : "Wstecz"}
         </Button>
         <span className="text-xs text-muted-foreground" aria-live="polite">
           {saved === "saving" && "Zapisuję wersję roboczą…"}
           {saved === "saved" && (
             <span className="inline-flex items-center gap-1">
-              <Save className="size-3.5" /> Wersja robocza zapisana na Twoim koncie
+              <Save className="size-3.5" /> Wersja robocza zapisana na Twoim
+              koncie
             </span>
           )}
         </span>
@@ -373,7 +494,8 @@ export function ApplicationForm({
           </Button>
         ) : (
           <Button onClick={next}>
-            {step === summaryIndex - 1 ? "Przejdź do podsumowania" : "Dalej"} <ArrowRight />
+            {step === summaryIndex - 1 ? "Przejdź do podsumowania" : "Dalej"}{" "}
+            <ArrowRight />
           </Button>
         )}
       </div>

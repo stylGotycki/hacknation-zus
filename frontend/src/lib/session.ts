@@ -1,5 +1,16 @@
-import { evaluateFamily, getGuideState, type Citizen, type FamilyProfile } from "@/lib/api";
-import { saveLastForm, saveLastProfile, saveLastResult, saveLastStep } from "@/lib/last-result";
+import { formFromProfile, stepsFor } from "@/components/calculator/form-model";
+import {
+  evaluateFamily,
+  getGuideState,
+  type Citizen,
+  type FamilyProfile,
+} from "@/lib/api";
+import {
+  saveLastForm,
+  saveLastProfile,
+  saveLastResult,
+  saveLastStep,
+} from "@/lib/last-result";
 
 const OWNER_KEY = "parent-guide:owner";
 const CITIZEN_KEY = "parent-guide:citizen";
@@ -19,9 +30,16 @@ export function loadCitizen(): Citizen | null {
 /** Puts what the account saved (calculator answers, step, last result) back into this tab. */
 export async function restoreFromAccount(): Promise<void> {
   const state = await getGuideState();
-  if (!state.form) return;
-  saveLastForm(state.form);
-  saveLastStep(state.step);
+  if (!state.form && !state.profile) return;
+  // A ready-made account (demo family) has only the profile: the answers are rebuilt from it and
+  // the calculator opens on the result.
+  const form = state.form ?? formFromProfile(state.profile as FamilyProfile);
+  saveLastForm(form);
+  saveLastStep(
+    state.form
+      ? state.step
+      : stepsFor(form as Parameters<typeof stepsFor>[0]).length - 1,
+  );
   if (state.profile) {
     saveLastProfile(state.profile);
     try {
@@ -32,7 +50,10 @@ export async function restoreFromAccount(): Promise<void> {
   }
 }
 
-export async function startSession(ownerId: string, citizen: Citizen): Promise<void> {
+export async function startSession(
+  ownerId: string,
+  citizen: Citizen,
+): Promise<void> {
   try {
     clearUserData();
     localStorage.setItem(OWNER_KEY, ownerId);
@@ -52,8 +73,12 @@ export async function startSession(ownerId: string, citizen: Citizen): Promise<v
 /** Removes everything the user entered from this browser (their account keeps it on the server). */
 function clearUserData(): void {
   for (const storage of [localStorage, sessionStorage]) {
-    const keys = Array.from({ length: storage.length }, (_, i) => storage.key(i)).filter(
-      (k): k is string => Boolean(k?.startsWith("parent-guide:")) && !KEEP.some((re) => re.test(k!)),
+    const keys = Array.from({ length: storage.length }, (_, i) =>
+      storage.key(i),
+    ).filter(
+      (k): k is string =>
+        Boolean(k?.startsWith("parent-guide:")) &&
+        !KEEP.some((re) => re.test(k!)),
     );
     keys.forEach((k) => storage.removeItem(k));
   }

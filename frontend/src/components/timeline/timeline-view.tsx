@@ -4,10 +4,8 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import {
-  type TimelineExtras,
-  VerticalTimeline,
-} from "@/components/timeline/vertical-timeline";
+import type { TimelineExtras } from "@/components/timeline/model";
+import { VerticalTimeline } from "@/components/timeline/vertical-timeline";
 import {
   type EvaluationResult,
   type FamilyProfile,

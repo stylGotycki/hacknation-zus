@@ -10,6 +10,7 @@
 export const PUBLIC_PATHS = {
   calculator: "/kalkulator",
   timeline: "/os-czasu",
+  account: "/moje-swiadczenia",
   applications: "/wnioski",
   zus: "/dane-zus",
   help: "/pomoc",
@@ -27,5 +28,8 @@ const startsWithSegment = (pathname: string, base: string) =>
  * URL, while server rendering sees the English one (nginx rewrites it before Next.js).
  */
 export function isRouteActive(pathname: string, route: RouteName): boolean {
-  return startsWithSegment(pathname, PUBLIC_PATHS[route]) || startsWithSegment(pathname, `/${route}`);
+  return (
+    startsWithSegment(pathname, PUBLIC_PATHS[route]) ||
+    startsWithSegment(pathname, `/${route}`)
+  );
 }

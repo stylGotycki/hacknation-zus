@@ -6,7 +6,7 @@ rozporządzenie o wnioskach dotyczących uprawnień rodzicielskich – RW, Porad
 załącznik o podstawie wymiaru – ZAL). Innych źródeł nie ma.
 
 Diagramy są tylko dokumentacją (wersje PNG: [1-kroki-kalkulatora](diagramy/1-kroki-kalkulatora.png), [2-prawo-do-zasilku](diagramy/2-prawo-do-zasilku.png), [3-urlop-macierzynski](diagramy/3-urlop-macierzynski.png), [4-rodzicielski-ojcowski-stawki](diagramy/4-rodzicielski-ojcowski-stawki.png), [5-ciaza](diagramy/5-ciaza.png)). Działające reguły leżą w bazie (tabela `rule`, seed:
-`backend/app/seed/rules_2026.py`), administrator zmienia je w panelu. Kody w nawiasach `[…]` to kody
+`backend/app/seed/rules/` (pakiet: po jednym pliku na obszar)``), administrator zmienia je w panelu. Kody w nawiasach `[…]` to kody
 reguł, które realizują dane przejście.
 
 ## 1. Kroki kalkulatora (to, o co pytamy)

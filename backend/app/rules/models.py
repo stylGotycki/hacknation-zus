@@ -273,6 +273,25 @@ class Deadline(BaseModel):
     late_pl: str | None = None
 
 
+class PaymentLine(BaseModel):
+    label_pl: str
+    days: int
+    amount_gross: float
+
+
+class Payment(BaseModel):
+    """One transfer of a parent: the allowance for the days of one calendar month."""
+
+    id: str
+    person: Person
+    month: str  # YYYY-MM – the month the allowance is paid for
+    date: date  # day the transfer is expected
+    days: int
+    amount_gross: float
+    payer: Literal["employer", "zus"] | None = None
+    lines: list[PaymentLine]
+
+
 class Totals(BaseModel):
     mother_gross: float = 0
     father_gross: float = 0
@@ -288,6 +307,7 @@ class EvaluationResult(BaseModel):
     bases: list[CalculationBase]
     benefits: list[BenefitResult]
     timeline: list[LeavePeriod]
+    payments: list[Payment] = []
     risks: list[Risk]
     deadlines: list[Deadline]
     averaged_rate: AveragedRateComparison | None

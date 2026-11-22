@@ -185,7 +185,7 @@ def _mean(values: list[float] | None, fallback: float | None) -> float | None:
     return sum(vals) / len(vals) if vals else fallback
 
 
-def _parent(p: ParentProfile | None, event: date) -> dict[str, Any]:
+def _parent(p: ParentProfile | None, event: date, born: bool = False) -> dict[str, Any]:
     if p is None:
         return {
             "obecny": False,
@@ -208,6 +208,13 @@ def _parent(p: ParentProfile | None, event: date) -> dict[str, Any]:
         and not p.start_relief
         and (p.insurance_ended_on is None or p.insurance_ended_on >= event)
     )
+    # Sickness in pregnancy ends the day before the birth: from the birth on the maternity allowance
+    # is paid, so a longer e-ZLA must not be paid (and counted) twice.
+    sick_from, sick_to = p.sick_leave_start, p.sick_leave_end
+    if born and sick_from and sick_to and sick_to >= event:
+        sick_to = event - timedelta(days=1)
+        if sick_from > sick_to:
+            sick_from = sick_to = None
     return {
         "obecny": True,
         "zatrudnienie": EMPLOYMENT[p.employment],
@@ -226,8 +233,8 @@ def _parent(p: ParentProfile | None, event: date) -> dict[str, Any]:
         "dlug": p.contribution_debt,
         "dlug_splacony": p.debt_paid_on,
         "praca_w_rodzicielskim": p.planned_work_fraction,
-        "zwolnienie_b_od": p.sick_leave_start,
-        "zwolnienie_b_do": p.sick_leave_end,
+        "zwolnienie_b_od": sick_from,
+        "zwolnienie_b_do": sick_to,
         "dni_chorobowego_w_roku": p.sick_days_used_this_year,
         "wiek_50": p.age_over_50,
     }
@@ -269,8 +276,8 @@ def build_facts(profile: FamilyProfile) -> dict[str, Any]:
             "wiek_lat": child.age_years,
             "odroczony_obowiazek": child.school_deferred,
         },
-        "mama": _parent(profile.mother, event),
-        "tata": _parent(profile.father, event),
+        "mama": _parent(profile.mother, event, child.birth_date is not None),
+        "tata": _parent(profile.father, event, child.birth_date is not None),
         "sytuacja_matki": {
             "rodzaj": MOTHER_SITUATION.get(profile.mother_cannot_care.value)
             if profile.mother_cannot_care

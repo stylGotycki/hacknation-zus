@@ -3,12 +3,12 @@
 Each rule is data: expressions in the rule language (app/engine/expressions.py) that read
 facts (app/engine/facts.py), parameters (param / tabela) and other rules by their code.
 The seed loads them into the `rule` table; afterwards they are edited in the admin panel.
-Source codes in `source`: KP, UZ, RZ, RW, PR, ZAL.
+Source codes in `source`: KP, UZ, RZ, RW, PR, ZAL; SR = ustawa o świadczeniach rodzinnych (becikowe), spoza sześciu źródeł.
 """
 
 from __future__ import annotations
 
-KP, UZ, RZ, RW, PR, ZAL = "KP", "UZ", "RZ", "RW", "PR", "ZAL"
+KP, UZ, RZ, RW, PR, ZAL, SR = "KP", "UZ", "RZ", "RW", "PR", "ZAL", "SR"
 PARENTS = {"mama": "mamy", "tata": "taty"}
 ENTITLED = {"mama": "mama_uprawniona", "tata": "tata_uprawniony"}
 
@@ -58,9 +58,11 @@ LATE = {
     + _soonest("work_combination")
     + "). Do tego dnia "
     "tata korzysta z pełnego urlopu rodzicielskiego.",
-    "t_ojcowski": "{jesli(tata.pracownik, 'Wskaż późniejszy początek urlopu (najwcześniej ' + dodaj_dni(dzis(), "
-    "tabela('application_lead_days', 'paternity')) + ').', 'Złóż wniosek do ZUS jak najszybciej.')} Urlop ojcowski "
-    "musi się skończyć najpóźniej {ojcowski_termin}.",
+    "t_ojcowski": "{jesli(ojcowski_termin < dzis(), 'Czas na wykorzystanie urlopu ojcowskiego minął ' + ojcowski_termin + "
+    "' – niewykorzystana część przepada.', jesli(tata.pracownik, 'Wskaż późniejszy początek urlopu (najwcześniej ' + "
+    "dodaj_dni(dzis(), tabela('application_lead_days', 'paternity')) + '). Urlop ojcowski musi się skończyć najpóźniej ' + "
+    "ojcowski_termin + '.', 'Złóż wniosek do ZUS jak najszybciej. Urlop ojcowski musi się skończyć najpóźniej ' + "
+    "ojcowski_termin + '.'))}",
     "t_ojcowski_do": "Prawo do urlopu i zasiłku ojcowskiego wygasło – niewykorzystana część przepada.",
     "t_rodzicielski_do": "Niewykorzystana część urlopu rodzicielskiego przepada – zasiłek za nią nie przysługuje.",
     "t_na_warunkach": "Pracodawca jest obowiązany uwzględnić wniosek złożony w ciągu "
@@ -1394,6 +1396,23 @@ RULES: list[dict] = [
         order=45,
     ),
     B(
+        "becikowe",
+        "rodzina",
+        "Becikowe – jednorazowa zapomoga z tytułu urodzenia dziecka",
+        "porod and not dziecko.martwe_urodzenie",
+        "'warunkowo'",
+        "{param('birth_grant_amount')} zł na każde dziecko, czyli {param('birth_grant_amount') * dziecko.liczba} zł – jednorazowo, "
+        "niezależnie od dochodu. Przysługuje matce, ojcu lub opiekunowi dziecka; wniosek składa się do gminy "
+        "w ciągu {param('birth_grant_months')} miesięcy od urodzenia. Warunek: zaświadczenie, że matka pozostawała pod opieką "
+        "medyczną od 10. tygodnia ciąży do porodu. To świadczenie spoza sześciu źródeł przewodnika – kwotę i terminy "
+        "potwierdź na gov.pl.",
+        [],
+        "Ustawa o świadczeniach rodzinnych art. 15b; gov.pl – Uzyskaj becikowe",
+        SR,
+        apply_to="Wniosek składasz w urzędzie gminy albo ośrodku pomocy społecznej właściwym dla miejsca zamieszkania.",
+        order=48,
+    ),
+    B(
         "swiadczenie_rodzicielskie_info",
         "rodzina",
         "Świadczenie rodzicielskie",
@@ -1410,6 +1429,30 @@ RULES: list[dict] = [
     # ======================================================================================
     # Dokumenty
     # ======================================================================================
+    M(
+        "dokument",
+        "d_becikowe",
+        "porod and not dziecko.martwe_urodzenie",
+        "Becikowe – dokumenty do gminy",
+        "Wniosek o jednorazową zapomogę, zaświadczenie lekarza lub położnej o opiece medycznej od 10. tygodnia ciąży do porodu, "
+        "odpis skrócony aktu urodzenia dziecka oraz oświadczenie, że na dziecko nie pobrano już becikowego (np. przez drugiego rodzica).",
+        "Ustawa o świadczeniach rodzinnych art. 15b; gov.pl – Uzyskaj becikowe",
+        SR,
+        benefit="becikowe",
+    ),
+    M(
+        "termin",
+        "t_becikowe",
+        "porod and not dziecko.martwe_urodzenie",
+        "Wniosek o becikowe",
+        "Wniosek do gminy w ciągu {param('birth_grant_months')} miesięcy od urodzenia dziecka.",
+        "Ustawa o świadczeniach rodzinnych art. 15b; gov.pl – Uzyskaj becikowe",
+        SR,
+        benefit="becikowe",
+        date="dodaj_mies(data_zdarzenia, param('birth_grant_months'))",
+        deadline_kind="apply",
+        late="Wniosek złożony po terminie gmina pozostawia bez rozpoznania – becikowe przepadło.",
+    ),
     M(
         "dokument",
         "d_mac_wniosek_pracodawca",
@@ -2090,7 +2133,9 @@ RULES: list[dict] = [
         "mama_uprawniona or tata_uprawniony",
         "Termin wypłaty",
         "Płatnik składek wypłaca zasiłek w terminie wypłaty wynagrodzeń, ZUS – na bieżąco, najpóźniej "
-        "{param('payment_deadline_days')} dni od wyjaśnienia ostatniej okoliczności.",
+        "{param('payment_deadline_days')} dni od wyjaśnienia ostatniej okoliczności. Na osi czasu pokazujemy przelew "
+        "zasiłku za każdy miesiąc urlopu, przyjmując wypłatę {param('payout_day')}. dnia następnego miesiąca (założenie – "
+        "zmienisz je w parametrach).",
         "UZ art. 64 ust. 1",
         UZ,
     ),

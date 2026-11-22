@@ -263,6 +263,9 @@ LABELS: dict[str, dict] = {
     "payment_deadline_days": U(
         group="Terminy wniosków", label="Wypłata zasiłku – najpóźniej", unit="days"
     ),
+    "payout_day": U(
+        group="Terminy wniosków", label="Dzień przelewu zasiłku w miesiącu", unit="number"
+    ),
     # --- Inne -----------------------------------------------------------------------------------
     "care_allowance_limits_days": U(
         group="Inne świadczenia",
@@ -280,6 +283,12 @@ LABELS: dict[str, dict] = {
     ),
     "funeral_application_months": U(
         group="Inne świadczenia", label="Zasiłek pogrzebowy – wniosek w ciągu", unit="months"
+    ),
+    "birth_grant_amount": U(
+        group="Inne świadczenia", label="Becikowe – kwota na jedno dziecko", unit="pln"
+    ),
+    "birth_grant_months": U(
+        group="Inne świadczenia", label="Becikowe – wniosek w ciągu (od urodzenia)", unit="months"
     ),
 }
 

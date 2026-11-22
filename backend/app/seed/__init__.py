@@ -63,13 +63,13 @@ def seed_parameters(db: Session) -> int:
 
 
 def seed_rules(db: Session) -> int:
-    """Insert or update rules from app/seed/rules_2026.py.
+    """Insert or update rules from app/seed/rules/.
 
     Rules changed in the admin panel (`modified`) and rules added there are left alone.
     """
     from app.engine.store import RULE_FIELDS
     from app.models import Rule
-    from app.seed.rules_2026 import all_rules
+    from app.seed.rules import all_rules
 
     changed = 0
     existing = {r.code: r for r in db.scalars(select(Rule))}

@@ -4,11 +4,17 @@ import { Download, Loader2, Send, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { formFromProfile, stepsFor } from "@/components/calculator/calculator-form";
+import { formFromProfile, stepsFor } from "@/components/calculator/form-model";
 import { CalculatorResults } from "@/components/calculator/calculator-results";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/form-controls";
 import {
   evaluateFamily,
@@ -26,7 +32,12 @@ import {
   type PueAnswer,
 } from "@/lib/api";
 import { formatDate, formatPln } from "@/lib/format";
-import { saveLastForm, saveLastProfile, saveLastResult, saveLastStep } from "@/lib/last-result";
+import {
+  saveLastForm,
+  saveLastProfile,
+  saveLastResult,
+  saveLastStep,
+} from "@/lib/last-result";
 import { PUBLIC_PATHS } from "@/lib/routes";
 import { loadCitizen } from "@/lib/session";
 import { cn } from "@/lib/utils";
@@ -41,7 +52,11 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "pue", label: "PUE ZUS" },
 ];
 
-type Loaded = { insurance: InsuranceData; debt: DebtCertificate; ezla: EzlaRecord[] };
+type Loaded = {
+  insurance: InsuranceData;
+  debt: DebtCertificate;
+  ezla: EzlaRecord[];
+};
 
 function Simulation({ note }: { note: string }) {
   return <p className="text-xs text-muted-foreground">{note}</p>;
@@ -110,7 +125,9 @@ export function ZusView() {
       void saveGuideState({ form, step, profile }).catch(() => undefined);
       setResult(evaluated);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się policzyć uprawnień.");
+      setError(
+        e instanceof Error ? e.message : "Nie udało się policzyć uprawnień.",
+      );
     } finally {
       setCalculating(false);
     }
@@ -123,7 +140,9 @@ export function ZusView() {
     try {
       setAnswer(await pueQuestion(citizen.id, subject, text));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nie udało się wysłać pytania.");
+      setError(
+        err instanceof Error ? err.message : "Nie udało się wysłać pytania.",
+      );
     } finally {
       setAsking(false);
     }
@@ -140,14 +159,33 @@ export function ZusView() {
             PESEL {citizen.pesel_masked} · {citizen.scenario_title_pl}
           </p>
         </div>
-        <Button onClick={download} disabled={loading}>
-          {loading ? <Loader2 className="animate-spin" /> : <Download />}
-          {loaded ? "Pobierz ponownie" : "Pobierz dane z ZUS"}
-        </Button>
+        {citizen.demo && (
+          <Button onClick={download} disabled={loading}>
+            {loading ? <Loader2 className="animate-spin" /> : <Download />}
+            {loaded ? "Pobierz ponownie" : "Pobierz dane z ZUS"}
+          </Button>
+        )}
       </div>
 
+      {!citizen.demo && (
+        <div className="flex flex-col items-start gap-3 border-l-[5px] border-navy bg-muted p-4 text-sm">
+          <p>
+            To konto otwarte własnym numerem PESEL – w symulowanym ZUS nie ma
+            dla niego danych. Wpisz dane rodziny w kalkulatorze, a wynik i
+            wnioski zapiszą się na tym koncie. Gotowe dane z ZUS mają konta
+            demonstracyjne.
+          </p>
+          <Button asChild>
+            <Link href={PUBLIC_PATHS.calculator}>Przejdź do kalkulatora</Link>
+          </Button>
+        </div>
+      )}
+
       {error && (
-        <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
+        <div
+          role="alert"
+          className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm"
+        >
           {error}
         </div>
       )}
@@ -163,7 +201,9 @@ export function ZusView() {
                 onClick={() => setTab(t.id)}
                 className={cn(
                   "rounded-full border px-3 py-1 text-sm transition-colors",
-                  tab === t.id ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted",
+                  tab === t.id
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "hover:bg-muted",
                 )}
               >
                 {t.label}
@@ -176,29 +216,42 @@ export function ZusView() {
               <CardHeader>
                 <CardTitle>Poświadczenie ubezpieczenia chorobowego</CardTitle>
                 <CardDescription>
-                  Stan na dzień zdarzenia: {formatDate(loaded.insurance.event_date)}
+                  Stan na dzień zdarzenia:{" "}
+                  {formatDate(loaded.insurance.event_date)}
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
-                <Badge className={cn("w-fit", !loaded.insurance.insured_on_event && BAD)}>
+                <Badge
+                  className={cn(
+                    "w-fit",
+                    !loaded.insurance.insured_on_event && BAD,
+                  )}
+                >
                   {loaded.insurance.summary_pl}
                 </Badge>
                 {loaded.insurance.periods.length === 0 && (
-                  <p className="text-sm">Brak zgłoszonych tytułów do ubezpieczenia chorobowego.</p>
+                  <p className="text-sm">
+                    Brak zgłoszonych tytułów do ubezpieczenia chorobowego.
+                  </p>
                 )}
                 {loaded.insurance.periods.map((p) => (
                   <div key={p.from} className="rounded-lg border p-3 text-sm">
                     <p className="font-medium">{p.title_pl}</p>
                     <p>
-                      {formatDate(p.from)} – {p.to ? formatDate(p.to) : "trwa"} ·{" "}
-                      {p.sickness_insurance === "voluntary" ? "ubezpieczenie dobrowolne" : "ubezpieczenie obowiązkowe"}
+                      {formatDate(p.from)} – {p.to ? formatDate(p.to) : "trwa"}{" "}
+                      ·{" "}
+                      {p.sickness_insurance === "voluntary"
+                        ? "ubezpieczenie dobrowolne"
+                        : "ubezpieczenie obowiązkowe"}
                     </p>
                     <p className="text-muted-foreground">{p.payer_pl}</p>
                   </div>
                 ))}
                 {loaded.insurance.bases.length > 0 && (
                   <div>
-                    <p className="mb-2 text-sm font-medium">Podstawa wymiaru składek (ostatnie miesiące)</p>
+                    <p className="mb-2 text-sm font-medium">
+                      Podstawa wymiaru składek (ostatnie miesiące)
+                    </p>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
@@ -209,7 +262,10 @@ export function ZusView() {
                         </thead>
                         <tbody>
                           {loaded.insurance.bases.map((b) => (
-                            <tr key={b.month} className="border-b last:border-0">
+                            <tr
+                              key={b.month}
+                              className="border-b last:border-0"
+                            >
                               <td className="py-1 pr-4">{b.month}</td>
                               <td className="py-1">{formatPln(b.base)}</td>
                             </tr>
@@ -229,17 +285,22 @@ export function ZusView() {
               <CardHeader>
                 <CardTitle>Zaświadczenie o stanie zadłużenia</CardTitle>
                 <CardDescription>
-                  Nr {loaded.debt.number} · na dzień {formatDate(loaded.debt.as_of)}
+                  Nr {loaded.debt.number} · na dzień{" "}
+                  {formatDate(loaded.debt.as_of)}
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-3 text-sm">
-                <Badge className={cn("w-fit", loaded.debt.blocks_benefit && BAD)}>
-                  {loaded.debt.blocks_benefit ? "Zadłużenie wstrzymuje zasiłek" : "Zadłużenie nie blokuje zasiłku"}
+                <Badge
+                  className={cn("w-fit", loaded.debt.blocks_benefit && BAD)}
+                >
+                  {loaded.debt.blocks_benefit
+                    ? "Zadłużenie wstrzymuje zasiłek"
+                    : "Zadłużenie nie blokuje zasiłku"}
                 </Badge>
                 <p>{loaded.debt.summary_pl}</p>
                 <p className="text-muted-foreground">
-                  Kwota zadłużenia: {formatPln(loaded.debt.debt_amount)} · próg (1% płacy minimalnej):{" "}
-                  {formatPln(loaded.debt.threshold)}
+                  Kwota zadłużenia: {formatPln(loaded.debt.debt_amount)} · próg
+                  (1% płacy minimalnej): {formatPln(loaded.debt.threshold)}
                   {loaded.debt.in_installments && " · spłata w ratach"}
                 </p>
                 <Simulation note={loaded.debt.note_pl} />
@@ -253,7 +314,9 @@ export function ZusView() {
                 <CardTitle>Zaświadczenia lekarskie e-ZLA</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-3 text-sm">
-                {loaded.ezla.length === 0 && <p>Brak wystawionych zaświadczeń e-ZLA.</p>}
+                {loaded.ezla.length === 0 && (
+                  <p>Brak wystawionych zaświadczeń e-ZLA.</p>
+                )}
                 {loaded.ezla.map((z) => (
                   <div key={z.number} className="rounded-lg border p-3">
                     <p className="font-medium">
@@ -277,12 +340,18 @@ export function ZusView() {
             <Card>
               <CardHeader>
                 <CardTitle>Pytanie do PUE / eZUS</CardTitle>
-                <CardDescription>Zadaj pytanie konsultantowi w razie wątpliwości co do danych.</CardDescription>
+                <CardDescription>
+                  Zadaj pytanie konsultantowi w razie wątpliwości co do danych.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={ask} className="flex flex-col gap-4">
                   <Field label="Temat">
-                    <Input value={subject} onChange={(e) => setSubject(e.target.value)} required />
+                    <Input
+                      value={subject}
+                      onChange={(e) => setSubject(e.target.value)}
+                      required
+                    />
                   </Field>
                   <Field label="Treść pytania">
                     <textarea
@@ -300,10 +369,13 @@ export function ZusView() {
                 {answer && (
                   <div className="mt-4 rounded-lg border bg-secondary p-4 text-sm">
                     <p className="text-xs text-muted-foreground">
-                      Zgłoszenie {answer.ticket} · {answer.received_at.slice(0, 10)}
+                      Zgłoszenie {answer.ticket} ·{" "}
+                      {answer.received_at.slice(0, 10)}
                     </p>
                     <p className="mt-1">{answer.answer_pl}</p>
-                    <p className="mt-2 text-xs text-muted-foreground">{answer.note_pl}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {answer.note_pl}
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -312,7 +384,11 @@ export function ZusView() {
 
           <div className="flex flex-col items-start gap-3">
             <Button onClick={calculate} disabled={calculating} size="lg">
-              {calculating ? <Loader2 className="animate-spin" /> : <Sparkles />}
+              {calculating ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <Sparkles />
+              )}
               Policz uprawnienia z danych ZUS
             </Button>
           </div>

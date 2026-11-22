@@ -13,7 +13,10 @@ export const TRUTH_FIELD: FormField = {
 };
 
 /** Same rule as the backend: "key" (truthy), "key=value" or "key!=value". */
-export function holds(condition: string | null | undefined, data: FormData): boolean {
+export function holds(
+  condition: string | null | undefined,
+  data: FormData,
+): boolean {
   if (!condition) return true;
   if (condition.includes("!=")) {
     const [key, value] = condition.split("!=");
@@ -27,35 +30,49 @@ export function holds(condition: string | null | undefined, data: FormData): boo
   return v !== undefined && v !== null && v !== "" && v !== false && v !== 0;
 }
 
-export const isEmpty = (value: unknown) => value === undefined || value === null || value === "" || value === false;
+export const isEmpty = (value: unknown) =>
+  value === undefined || value === null || value === "" || value === false;
 
 export function visibleSteps(definition: FormDefinition, data: FormData) {
   return definition.steps
-    .map((step, index) => ({ ...step, index, fields: step.fields.filter((f) => holds(f.when, data)) }))
+    .map((step, index) => ({
+      ...step,
+      index,
+      fields: step.fields.filter((f) => holds(f.when, data)),
+    }))
     .filter((step) => holds(step.when, data));
 }
 
 export function fieldIndex(definition: FormDefinition): Map<string, FormField> {
   const map = new Map<string, FormField>();
-  for (const step of definition.steps) for (const f of step.fields) map.set(f.key, f);
+  for (const step of definition.steps)
+    for (const f of step.fields) map.set(f.key, f);
   for (const f of definition.statements) map.set(f.key, f);
   return map;
 }
 
 /** A value as it would read on the printed form. */
-export function formatValue(field: FormField | undefined, value: FormData[string] | undefined): string {
+export function formatValue(
+  field: FormField | undefined,
+  value: FormData[string] | undefined,
+): string {
   if (isEmpty(value) && field?.type !== "checkbox") return "";
   if (!field) return String(value ?? "");
   if (field.type === "checkbox") return value ? "tak" : "nie";
   if (field.type === "date") return formatDate(String(value));
-  if (field.type === "select") return field.options?.find(([v]) => v === value)?.[1] ?? String(value);
+  if (field.type === "select")
+    return field.options?.find(([v]) => v === value)?.[1] ?? String(value);
   return String(value);
 }
 
 const BLANK = "………";
 
 /** Fills {key} placeholders; a hidden field gives nothing, a visible empty one a blank line like on paper. */
-export function renderText(text: string, definition: FormDefinition, data: FormData): string {
+export function renderText(
+  text: string,
+  definition: FormDefinition,
+  data: FormData,
+): string {
   const fields = fieldIndex(definition);
   return text
     .replace(/\{([a-z_]+)\}/g, (_, key: string) => {
@@ -69,4 +86,5 @@ export function renderText(text: string, definition: FormDefinition, data: FormD
     .trim();
 }
 
-export const shownParagraphs = (items: Paragraph[], data: FormData) => items.filter((p) => holds(p.when, data));
+export const shownParagraphs = (items: Paragraph[], data: FormData) =>
+  items.filter((p) => holds(p.when, data));

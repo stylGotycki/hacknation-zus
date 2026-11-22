@@ -18,7 +18,8 @@ function DemoBanner() {
   return (
     <div className="bg-navy text-white">
       <p className={cn(CONTAINER, "py-1.5 text-center text-xs sm:text-sm")}>
-        Wersja demonstracyjna — projekt HackNation 2026, nie jest serwisem ZUS. Dane i logowanie są symulowane.
+        Wersja demonstracyjna — projekt HackNation 2026, nie jest serwisem ZUS.
+        Dane i logowanie są symulowane.
       </p>
     </div>
   );
@@ -26,10 +27,18 @@ function DemoBanner() {
 
 function Logo() {
   return (
-    <Link href="/" className="flex shrink-0 items-center gap-4" aria-label={`${GUIDE_NAME} – strona główna`}>
+    <Link
+      href="/"
+      className="flex shrink-0 items-center gap-4"
+      aria-label={`${GUIDE_NAME} – strona główna`}
+    >
       {/* Official file goes to public/brand/logo-zus.svg (a neutral placeholder ships with the repo). */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/brand/logo-zus.svg" alt="ZUS" className="h-[40px] w-auto sm:h-[46px] lg:h-[57px]" />
+      <img
+        src="/brand/logo-zus.svg"
+        alt="ZUS"
+        className="h-[40px] w-auto sm:h-[46px] lg:h-[57px]"
+      />
       <span className="hidden border-l-2 border-primary pl-4 text-[20px] font-bold leading-tight text-primary sm:block xl:text-[24px]">
         {GUIDE_NAME}
       </span>
@@ -78,12 +87,20 @@ export function SiteHeader() {
       </a>
       <DemoBanner />
 
-      <div className={cn(CONTAINER, "flex h-[84px] items-center gap-5 lg:h-[100px]")}>
+      <div
+        className={cn(
+          CONTAINER,
+          "flex h-[84px] items-center gap-5 lg:h-[100px]",
+        )}
+      >
         <Logo />
 
         {/* Desktop utility row */}
         <div className="ml-auto hidden items-center gap-4 lg:flex">
-          <Link href={`${PUBLIC_PATHS.help}#kontakt`} className="hidden text-sm hover:underline xl:inline">
+          <Link
+            href={`${PUBLIC_PATHS.help}#kontakt`}
+            className="hidden text-sm hover:underline xl:inline"
+          >
             Kontakt
           </Link>
           <AccessibilityToggles />
@@ -104,7 +121,11 @@ export function SiteHeader() {
             aria-controls="mobile-menu"
             className="flex flex-col items-center gap-1 text-sm font-bold text-link"
           >
-            {open ? <X className="size-9" strokeWidth={1.75} /> : <Menu className="size-9" strokeWidth={1.75} />}
+            {open ? (
+              <X className="size-9" strokeWidth={1.75} />
+            ) : (
+              <Menu className="size-9" strokeWidth={1.75} />
+            )}
             Menu
           </button>
         </div>
@@ -117,7 +138,11 @@ export function SiteHeader() {
 
       {/* Mobile menu */}
       {open && (
-        <nav id="mobile-menu" aria-label="Menu" className="border-b border-band-border lg:hidden">
+        <nav
+          id="mobile-menu"
+          aria-label="Menu"
+          className="border-b border-band-border lg:hidden"
+        >
           <div className={cn(CONTAINER, "flex flex-col gap-4 py-4")}>
             <div className="flex flex-col gap-2">
               {loginButton}
@@ -132,10 +157,13 @@ export function SiteHeader() {
                     href={item.href}
                     className={cn(
                       "flex items-center justify-between py-3 font-bold",
-                      isRouteActive(pathname, item.route) ? "text-foreground" : "text-link",
+                      isRouteActive(pathname, item.route)
+                        ? "text-foreground"
+                        : "text-link",
                     )}
                   >
-                    {item.sideLabel ?? item.label} <ChevronRight className="size-4" />
+                    {item.sideLabel ?? item.label}{" "}
+                    <ChevronRight className="size-4" />
                   </Link>
                 </li>
               ))}

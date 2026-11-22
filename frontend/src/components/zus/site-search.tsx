@@ -9,11 +9,7 @@ import { sideNavItems } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
 const normalize = (s: string) =>
-  s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/ł/g, "l");
+  s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ł/g, "l");
 
 /** "Szukaj" from the zus.pl header: searches the pages of the guide. */
 export function SiteSearch({ className }: { className?: string }) {
@@ -31,7 +27,11 @@ export function SiteSearch({ className }: { className?: string }) {
     const q = normalize(query.trim());
     const items = sideNavItems();
     if (!q) return items;
-    return items.filter((item) => normalize(`${item.label} ${item.sideLabel ?? ""} ${item.description}`).includes(q));
+    return items.filter((item) =>
+      normalize(
+        `${item.label} ${item.sideLabel ?? ""} ${item.description}`,
+      ).includes(q),
+    );
   }, [query]);
 
   return (
@@ -60,20 +60,38 @@ export function SiteSearch({ className }: { className?: string }) {
               aria-label="Szukaj w przewodniku"
               className="min-w-0 flex-1 bg-transparent py-1 text-sm outline-none"
             />
-            <button type="button" onClick={() => setOpen(false)} aria-label="Zamknij wyszukiwanie">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Zamknij wyszukiwanie"
+            >
               <X className="size-4" />
             </button>
           </div>
           <ul className="mt-1 max-h-80 overflow-auto">
             {results.map((item) => (
-              <li key={item.route} className="border-b border-border last:border-0">
-                <Link href={item.href} className="block py-2.5 text-sm hover:bg-muted">
-                  <span className="font-bold text-link">{item.sideLabel ?? item.label}</span>
-                  <span className="block text-xs text-muted-foreground">{item.description}</span>
+              <li
+                key={item.route}
+                className="border-b border-border last:border-0"
+              >
+                <Link
+                  href={item.href}
+                  className="block py-2.5 text-sm hover:bg-muted"
+                >
+                  <span className="font-bold text-link">
+                    {item.sideLabel ?? item.label}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {item.description}
+                  </span>
                 </Link>
               </li>
             ))}
-            {results.length === 0 && <li className="py-3 text-sm text-muted-foreground">Brak wyników.</li>}
+            {results.length === 0 && (
+              <li className="py-3 text-sm text-muted-foreground">
+                Brak wyników.
+              </li>
+            )}
           </ul>
         </div>
       )}

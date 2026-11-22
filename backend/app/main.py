@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from app.api import api_router
 from app.core.config import get_settings
 from app.core.db import SessionLocal, init_db
+from app.mocks.seed_personas import seed_personas
 from app.seed import seed_parameters, seed_rules
 
 settings = get_settings()
@@ -18,6 +19,7 @@ async def lifespan(_: FastAPI):
         with SessionLocal() as db:
             seed_parameters(db)
             seed_rules(db)
+            seed_personas(db)
     yield
 
 

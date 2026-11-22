@@ -1,6 +1,6 @@
 from app.seed.scenarios import load_scenarios
 
-OWNER = {"X-Owner-Id": "tester-1"}
+OWNER = {"X-Owner-Id": "mobywatel-tester-1"}
 
 
 def scenario(sid):
@@ -78,13 +78,58 @@ def test_overdue_suggestion_carries_advice(client):
     assert overdue and all(i["late_pl"] for i in overdue)
 
 
-def test_suggestion_prefills_identity_of_logged_in_citizen(client):
+def test_suggestion_prefills_identity_and_remembered_spouse(client):
+    """P2 is Karolina; her husband's data come from the application he filed earlier."""
+    profile = client.get("/api/mock/zus/P2/profile").json()
     items = client.post(
-        "/api/applications/suggestions", json=scenario("S3"), headers={"X-Owner-Id": "mobywatel-S3"}
+        "/api/applications/suggestions", json=profile, headers={"X-Owner-Id": "mobywatel-P2"}
     ).json()
     mother = next(i for i in items if i["person"] == "mother")
     father = next(i for i in items if i["person"] == "father")
-    assert mother["prefill"]["first_name"] == "Marta" and "first_name" not in father["prefill"]
+    assert mother["prefill"]["first_name"] == "Karolina"
+    assert mother["prefill"]["last_name"] == "Wiśniewska"
+    assert (
+        father["prefill"]["first_name"] == "Marek"
+        and father["prefill"]["employer_name"] == "Delta Logistyka Sp. z o.o."
+    )
+
+
+def test_other_parent_typed_in_a_form_is_remembered_for_next_forms(client):
+    owner = {"X-Owner-Id": "mobywatel-tester-spouse"}
+    assert client.get("/api/people", headers=owner).json() == {"mother": {}, "father": {}}
+    client.put(
+        "/api/drafts/zus_zam",
+        json={
+            "step": 4,
+            "data": {
+                "applicant_role": "mother",
+                "first_name": "Aneta",
+                "last_name": "Nowak",
+                "other_first_name": "Tomasz",
+                "other_last_name": "Nowak",
+                "other_pesel": "91020212345",
+            },
+        },
+        headers=owner,
+    )
+    people = client.get("/api/people", headers=owner).json()
+    assert people["mother"]["first_name"] == "Aneta" and people["father"]["first_name"] == "Tomasz"
+    assert people["father"]["pesel"] == "91020212345"
+
+
+def test_demo_accounts_have_their_own_history(client):
+    def apps(pid):
+        return client.get("/api/applications", headers={"X-Owner-Id": f"mobywatel-{pid}"}).json()
+
+    def drafts(pid):
+        return client.get("/api/drafts", headers={"X-Owner-Id": f"mobywatel-{pid}"}).json()
+
+    assert apps("P1") == [] and [d["form_code"] for d in drafts("P1")] == ["leave_maternity_before"]
+    assert {a["status"] for a in apps("P2")} == {"decided", "in_progress"}
+    assert [d["form_code"] for d in drafts("P2")] == ["leave_parental:mother"]
+    assert {a["status"] for a in apps("P3")} == {"decided", "submitted"}
+    state = client.get("/api/state", headers={"X-Owner-Id": "mobywatel-P3"}).json()
+    assert state["profile"]["child"]["birth_date"] == "2026-07-08"
 
 
 def test_suggestion_for_self_employed_is_zam_to_zus(client):
@@ -146,7 +191,7 @@ def test_application_status_advances_to_decided(client):
     assert client.post(f"/api/applications/{app_id}/advance", headers=OWNER).status_code == 409
     assert (
         client.post(
-            f"/api/applications/{app_id}/advance", headers={"X-Owner-Id": "other"}
+            f"/api/applications/{app_id}/advance", headers={"X-Owner-Id": "mobywatel-other"}
         ).status_code
         == 404
     )
@@ -180,7 +225,7 @@ def test_civil_registry_extract_form_is_listed_and_submits(client):
 
 
 def test_role_drafts_are_separate(client):
-    owner = {"X-Owner-Id": "tester-roles"}
+    owner = {"X-Owner-Id": "mobywatel-tester-roles"}
     client.put(
         "/api/drafts/leave_parental:mother",
         json={"step": 1, "data": {"first_name": "A"}},
@@ -195,22 +240,37 @@ def test_role_drafts_are_separate(client):
     assert {d["form_code"] for d in drafts} == {"leave_parental:mother", "leave_parental:father"}
 
 
-def test_state_is_saved_per_owner_and_merged_on_login(client):
+def test_state_is_saved_per_owner_and_guest_work_merged_on_login(client):
     guest = {"X-Owner-Id": "guest-xyz"}
     state = {"form": {"stage": "born"}, "step": 3, "profile": {"child": {}}}
     assert client.put("/api/state", json=state, headers=guest).json()["step"] == 3
-    client.put(
-        "/api/drafts/zus_zam", json={"step": 1, "data": {"first_name": "Gość"}}, headers=guest
-    )
     assert client.get("/api/state", headers={"X-Owner-Id": "someone"}).json()["form"] is None
 
-    r = client.post("/api/mock/mobywatel/login", json={"citizen_id": "S9"}, headers=guest)
+    r = client.post("/api/mock/mobywatel/login", json={"citizen_id": "P1"}, headers=guest)
     account = {"X-Owner-Id": r.json()["owner_id"]}
-    assert client.get("/api/state", headers=account).json()["step"] == 3
-    assert any(
-        d["data"].get("first_name") == "Gość"
-        for d in client.get("/api/drafts", headers=account).json()
+    # The account keeps its own saved answers.
+    assert (
+        client.get("/api/state", headers=account).json()["profile"]["child"]["due_date"]
+        == "2027-03-18"
     )
-    # Logging out and in again: the account keeps everything, the guest id is empty.
     assert client.get("/api/state", headers=guest).json()["form"] is None
-    assert client.get("/api/state", headers=account).json()["form"] == {"stage": "born"}
+
+
+def test_guest_cannot_draft_file_or_advance_applications(client):
+    guest = {"X-Owner-Id": "guest-abc"}
+    data = {"first_name": "G"}
+    assert (
+        client.put("/api/drafts/zus_zam", json={"step": 0, "data": data}, headers=guest).status_code
+        == 401
+    )
+    body = {"form_code": "zus_zam", "data": data}
+    assert client.post("/api/applications", json=body, headers=guest).status_code == 401
+    assert client.post("/api/applications/1/advance", headers=guest).status_code == 401
+    # Suggestions stay open to everyone.
+    profile = {
+        "child": {"due_date": "2027-03-18"},
+        "mother": {"employment": "employee", "average_monthly_base": 6000},
+    }
+    assert (
+        client.post("/api/applications/suggestions", json=profile, headers=guest).status_code == 200
+    )

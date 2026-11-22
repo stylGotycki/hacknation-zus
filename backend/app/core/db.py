@@ -19,8 +19,13 @@ class Base(DeclarativeBase):
 
 def _make_engine(url: str):
     if url.startswith("sqlite"):
-        # One shared connection so an in-memory database survives across sessions.
-        return create_engine(url, connect_args={"check_same_thread": False}, poolclass=StaticPool)
+        args = {"check_same_thread": False}
+        if ":memory:" in url or url in ("sqlite://", "sqlite:///"):
+            # One shared connection so an in-memory database survives across sessions.
+            return create_engine(url, connect_args=args, poolclass=StaticPool)
+        # A file database gets a connection per session: a single shared connection breaks as soon
+        # as the page fires several requests at once ("bad parameter or other API misuse").
+        return create_engine(url, connect_args={**args, "timeout": 30})
     return create_engine(url, pool_pre_ping=True)
 
 

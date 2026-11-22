@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "backend"))
 
-from app.seed.rules_2026 import all_rules  # noqa: E402
+from app.seed.rules import all_rules  # noqa: E402
 
 KIND = {
     "wartosc": "Wartość", "okres": "Okres", "swiadczenie": "Świadczenie", "dokument": "Dokument",

@@ -16,6 +16,8 @@ from app.rules.models import (
     EvaluationResult,
     FamilyProfile,
     LeavePeriod,
+    Payment,
+    PaymentLine,
     Risk,
     Status,
     Totals,
@@ -70,6 +72,65 @@ def _periods(run: RunResult, scope: Mapping[str, Any], divisor: float) -> list[L
             )
         )
     return out
+
+
+def _month_end(d: date) -> date:
+    nxt = date(d.year + (d.month == 12), d.month % 12 + 1, 1)
+    return nxt - timedelta(days=1)
+
+
+def _payments(timeline: list[LeavePeriod], payout_day: int) -> list[Payment]:
+    """Splits every paid period by calendar month: one transfer per parent and month.
+
+    The amount of a month is its share of the period's total (days in the month / days of the period);
+    the last piece takes the rounding rest, so the transfers add up to the period total exactly.
+    The transfer comes on `payout_day` of the following month.
+    """
+    grouped: dict[tuple[str, str], dict[str, Any]] = {}
+    for p in timeline:
+        if not p.paid or p.total_gross is None or p.days <= 0 or p.person == "family":
+            continue
+        paid_so_far, day = 0.0, p.start
+        while day <= p.end:
+            end = min(p.end, _month_end(day))
+            n = (end - day).days + 1
+            amount = (
+                round(p.total_gross - paid_so_far, 2)
+                if end == p.end
+                else round(p.total_gross * n / p.days, 2)
+            )
+            paid_so_far += amount
+            slot = grouped.setdefault(
+                (p.person, f"{day.year}-{day.month:02d}"),
+                {
+                    "days": 0,
+                    "amount": 0.0,
+                    "lines": [],
+                    "payer": p.payer,
+                    "month_end": _month_end(day),
+                },
+            )
+            slot["days"] += n
+            slot["amount"] = round(slot["amount"] + amount, 2)
+            slot["lines"].append(PaymentLine(label_pl=p.label_pl, days=n, amount_gross=amount))
+            day = end + timedelta(days=1)
+    out = []
+    for (person, month), slot in sorted(grouped.items(), key=lambda kv: (kv[0][1], kv[0][0])):
+        after = slot["month_end"] + timedelta(days=1)
+        paid_on = after.replace(day=min(max(payout_day, 1), 28))
+        out.append(
+            Payment(
+                id=f"{person}-{month}",
+                person=person,
+                month=month,
+                date=paid_on,
+                days=slot["days"],
+                amount_gross=slot["amount"],
+                payer=slot["payer"],
+                lines=slot["lines"],
+            )
+        )
+    return sorted(out, key=lambda x: (x.date, x.person))
 
 
 def _run(
@@ -293,6 +354,7 @@ def evaluate_profile(
         bases=bases,
         benefits=benefits,
         timeline=timeline,
+        payments=_payments(timeline, int(params.get("payout_day") or 10)),
         risks=risks,
         deadlines=deadlines,
         averaged_rate=averaged,

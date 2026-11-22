@@ -22,7 +22,8 @@ function useCurrentItem(): { pathname: string; current: NavItem | undefined } {
 function SideMenu({ className }: { className?: string }) {
   const { pathname, current } = useCurrentItem();
   const atHome = pathname === "/";
-  const item = "block border-b border-border py-[18px] pr-4 text-[15px] leading-snug";
+  const item =
+    "block border-b border-border py-[18px] pr-4 text-[15px] leading-snug";
 
   return (
     <nav aria-label={GUIDE_NAME} className={className}>
@@ -31,7 +32,13 @@ function SideMenu({ className }: { className?: string }) {
           <Link
             href="/"
             aria-current={atHome ? "page" : undefined}
-            className={cn(item, "pl-5", atHome ? "bg-primary font-bold text-white" : "text-foreground hover:underline")}
+            className={cn(
+              item,
+              "pl-5",
+              atHome
+                ? "bg-primary font-bold text-white"
+                : "text-foreground hover:underline",
+            )}
           >
             {GUIDE_NAME}
           </Link>
@@ -46,7 +53,9 @@ function SideMenu({ className }: { className?: string }) {
                 className={cn(
                   item,
                   "pl-[50px] font-bold",
-                  active ? "bg-primary text-white" : "text-link hover:underline",
+                  active
+                    ? "bg-primary text-white"
+                    : "text-link hover:underline",
                 )}
               >
                 {labelOf(nav)}
@@ -64,14 +73,25 @@ function Breadcrumbs() {
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [pathname]);
 
-  const sep = <span aria-hidden className="px-2.5 text-foreground">&gt;</span>;
+  const sep = (
+    <span aria-hidden className="px-2.5 text-foreground">
+      &gt;
+    </span>
+  );
   const last = current ? labelOf(current) : null;
 
   return (
     <div className="border-y border-band-border bg-muted">
       {/* Desktop: full trail */}
-      <nav aria-label="Ścieżka nawigacji" className={cn(CONTAINER, "hidden h-[52px] items-center lg:flex")}>
-        <Link href="/" className="flex h-full items-center pr-5 text-link" aria-label={`${GUIDE_NAME} – start`}>
+      <nav
+        aria-label="Ścieżka nawigacji"
+        className={cn(CONTAINER, "hidden h-[52px] items-center lg:flex")}
+      >
+        <Link
+          href="/"
+          className="flex h-full items-center pr-5 text-link"
+          aria-label={`${GUIDE_NAME} – start`}
+        >
           <Home className="size-6" strokeWidth={1.75} />
         </Link>
         <ol className="flex h-full items-center border-l border-band-border pl-3 text-xs">
@@ -101,15 +121,25 @@ function Breadcrumbs() {
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          className={cn(CONTAINER, "flex h-[58px] items-center justify-between text-left text-xs")}
+          className={cn(
+            CONTAINER,
+            "flex h-[58px] items-center justify-between text-left text-xs",
+          )}
         >
           <span>
             {GUIDE_NAME} {sep}
             {last ? <span className="font-bold">{last}</span> : "…"}
           </span>
-          <ChevronDown className={cn("size-5 text-link transition-transform", open && "rotate-180")} />
+          <ChevronDown
+            className={cn(
+              "size-5 text-link transition-transform",
+              open && "rotate-180",
+            )}
+          />
         </button>
-        {open && <SideMenu className="border-t border-band-border bg-background" />}
+        {open && (
+          <SideMenu className="border-t border-band-border bg-background" />
+        )}
       </div>
     </div>
   );

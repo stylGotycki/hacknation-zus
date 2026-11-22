@@ -17,7 +17,11 @@ export function ApiStatus({ inverse = false }: { inverse?: boolean }) {
       .catch(() => setStatus("down"));
   }, []);
 
-  const label = { checking: "sprawdzam API…", ok: "API działa", down: "API niedostępne" }[status];
+  const label = {
+    checking: "sprawdzam API…",
+    ok: "API działa",
+    down: "API niedostępne",
+  }[status];
 
   return (
     <span className="inline-flex items-center gap-2">
@@ -26,7 +30,9 @@ export function ApiStatus({ inverse = false }: { inverse?: boolean }) {
           "size-2 rounded-full",
           status === "ok" && (inverse ? "bg-white" : "bg-primary"),
           status === "down" && "bg-destructive",
-          status === "checking" && (inverse ? "bg-white/60" : "bg-muted-foreground") + " animate-pulse",
+          status === "checking" &&
+            (inverse ? "bg-white/60" : "bg-muted-foreground") +
+              " animate-pulse",
         )}
       />
       {label}

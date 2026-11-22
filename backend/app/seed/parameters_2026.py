@@ -353,6 +353,13 @@ PARAMETERS: list[dict] = [
         "Zasiłek wypłaca się najpóźniej w tym terminie od wyjaśnienia ostatniej okoliczności.",
         f"{UZ}, art. 64 ust. 1",
     ),
+    p(
+        "payout_day",
+        10,
+        "Dzień miesiąca, w którym przychodzi przelew zasiłku za poprzedni miesiąc. Założenie planera – "
+        "przepisy wskazują termin wypłaty wynagrodzeń (płatnik) albo „na bieżąco” (ZUS).",
+        f"{UZ}, art. 64 ust. 1",
+    ),
     # --- Inne świadczenia (Poradnik) -----------------------------------------------------------
     p(
         "care_allowance_limits_days",
@@ -371,6 +378,20 @@ PARAMETERS: list[dict] = [
         12,
         "Wniosek o zasiłek pogrzebowy – w ciągu tylu miesięcy od pochówku.",
         f"{PR}, rozdz. Zasiłek pogrzebowy",
+    ),
+    # Becikowe is NOT in the six sources: values from the Act on family benefits (art. 15b) and
+    # gov.pl/web/gov/uzyskaj-becikowe. Editable in the admin panel.
+    p(
+        "birth_grant_amount",
+        1000.0,
+        "Becikowe – jednorazowa zapomoga z tytułu urodzenia dziecka, zł na jedno dziecko (niezależnie od dochodu).",
+        "SR: ustawa o świadczeniach rodzinnych art. 15b (spoza sześciu źródeł; gov.pl – Uzyskaj becikowe)",
+    ),
+    p(
+        "birth_grant_months",
+        12,
+        "Becikowe – wniosek do gminy w ciągu tylu miesięcy od urodzenia dziecka (po terminie – bez rozpoznania).",
+        "SR: ustawa o świadczeniach rodzinnych art. 15b (spoza sześciu źródeł; gov.pl – Uzyskaj becikowe)",
     ),
 ]
 

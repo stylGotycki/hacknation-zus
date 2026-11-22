@@ -33,7 +33,7 @@ from app.engine.service import evaluate_profile
 from app.engine.store import RULE_FIELDS, load_params, load_rules, rule_dict, rules_version, to_def
 from app.models import LegalParameter, Rule, RuleHistory
 from app.rules import FamilyProfile
-from app.seed.rules_2026 import all_rules
+from app.seed.rules import all_rules
 
 router = APIRouter(prefix="/admin/rules", tags=["admin"], dependencies=[Depends(require_admin)])
 
@@ -66,6 +66,7 @@ SOURCES = {
     "RW": "Rozporządzenie w sprawie wniosków i dokumentów dotyczących uprawnień rodzicielskich",
     "PR": "Poradnik ZUS 2026 – zasiłki dla rodziców",
     "ZAL": "Załącznik do zadania – zasady wyliczania podstawy",
+    "SR": "Ustawa o świadczeniach rodzinnych (spoza sześciu źródeł – do weryfikacji)",
 }
 
 

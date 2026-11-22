@@ -1,10 +1,29 @@
 import { AlertTriangle, Info, ShieldAlert } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { VerticalTimeline } from "@/components/timeline/vertical-timeline";
-import type { BenefitResult, BenefitStatus, Deadline, EvaluationResult, Person, Risk } from "@/lib/api";
-import { formatDate, formatDaysLeft, formatPercent, formatPln, formatWeeks } from "@/lib/format";
+import type {
+  BenefitResult,
+  BenefitStatus,
+  Deadline,
+  EvaluationResult,
+  Person,
+  Risk,
+} from "@/lib/api";
+import {
+  formatDate,
+  formatDaysLeft,
+  formatPercent,
+  formatPln,
+  formatWeeks,
+} from "@/lib/format";
 import { fatherHasAllowance } from "@/lib/result-view";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +41,11 @@ const STATUS_CLASS: Record<BenefitStatus, string> = {
   info: "bg-secondary text-secondary-foreground border-transparent",
 };
 
-const PERSON_LABEL: Record<Person, string> = { mother: "Mama", father: "Tata", family: "Rodzina" };
+const PERSON_LABEL: Record<Person, string> = {
+  mother: "Mama",
+  father: "Tata",
+  family: "Rodzina",
+};
 
 const PAYER_LABEL = {
   employer: "Wypłaca pracodawca",
@@ -35,11 +58,21 @@ const DEADLINE_CHIP = {
   overdue: "bg-destructive/10 text-destructive",
 } as const;
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Stat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
   return (
     <div className="rounded-xl border bg-card p-4">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">{value}</p>
+      <p className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
+        {value}
+      </p>
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
@@ -53,8 +86,14 @@ function BenefitCard({ benefit }: { benefit: BenefitResult }) {
           <Badge variant="outline" className="font-normal">
             {PERSON_LABEL[benefit.person]}
           </Badge>
-          <Badge className={cn("border", STATUS_CLASS[benefit.status])}>{STATUS_LABEL[benefit.status]}</Badge>
-          {benefit.payer && <Badge variant="outline" className="font-normal">{PAYER_LABEL[benefit.payer]}</Badge>}
+          <Badge className={cn("border", STATUS_CLASS[benefit.status])}>
+            {STATUS_LABEL[benefit.status]}
+          </Badge>
+          {benefit.payer && (
+            <Badge variant="outline" className="font-normal">
+              {PAYER_LABEL[benefit.payer]}
+            </Badge>
+          )}
         </div>
         <CardTitle className="text-base">{benefit.title_pl}</CardTitle>
         <CardDescription>{benefit.summary_pl}</CardDescription>
@@ -63,15 +102,22 @@ function BenefitCard({ benefit }: { benefit: BenefitResult }) {
         {benefit.start && benefit.end && (
           <p>
             <span className="text-muted-foreground">Okres: </span>
-            {formatDate(benefit.start)} – {formatDate(benefit.end)} ({formatWeeks(benefit.weeks)})
+            {formatDate(benefit.start)} – {formatDate(benefit.end)} (
+            {formatWeeks(benefit.weeks)})
           </p>
         )}
         {benefit.monthly_gross !== null && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Stat label="Stawka" value={formatPercent(benefit.rate)} />
-            <Stat label="Miesięcznie brutto" value={formatPln(benefit.monthly_gross)} />
+            <Stat
+              label="Miesięcznie brutto"
+              value={formatPln(benefit.monthly_gross)}
+            />
             {benefit.total_gross !== null && (
-              <Stat label="Łącznie brutto" value={formatPln(benefit.total_gross)} />
+              <Stat
+                label="Łącznie brutto"
+                value={formatPln(benefit.total_gross)}
+              />
             )}
           </div>
         )}
@@ -86,20 +132,32 @@ function BenefitCard({ benefit }: { benefit: BenefitResult }) {
             <span
               className={cn(
                 "rounded-md px-2 py-0.5 text-xs font-medium",
-                DEADLINE_CHIP[benefit.days_left < 0 ? "overdue" : benefit.days_left <= 14 ? "soon" : "open"],
+                DEADLINE_CHIP[
+                  benefit.days_left < 0
+                    ? "overdue"
+                    : benefit.days_left <= 14
+                      ? "soon"
+                      : "open"
+                ],
               )}
             >
               {formatDaysLeft(benefit.days_left)}
             </span>
             <span>
-              <span className="font-medium">Wniosek do {formatDate(benefit.deadline)}. </span>
+              <span className="font-medium">
+                Wniosek do {formatDate(benefit.deadline)}.{" "}
+              </span>
               {benefit.deadline_note_pl}
             </span>
           </p>
         )}
-        {(benefit.reasons_pl.length > 0 || benefit.documents_pl.length > 0 || benefit.legal_basis.length > 0) && (
+        {(benefit.reasons_pl.length > 0 ||
+          benefit.documents_pl.length > 0 ||
+          benefit.legal_basis.length > 0) && (
           <details>
-            <summary className="cursor-pointer text-primary">Szczegóły, dokumenty i podstawa prawna</summary>
+            <summary className="cursor-pointer text-primary">
+              Szczegóły, dokumenty i podstawa prawna
+            </summary>
             <div className="mt-3 flex flex-col gap-3">
               {benefit.reasons_pl.length > 0 && (
                 <ul className="list-disc space-y-1 pl-5">
@@ -119,7 +177,9 @@ function BenefitCard({ benefit }: { benefit: BenefitResult }) {
                 </div>
               )}
               {benefit.legal_basis.length > 0 && (
-                <p className="text-xs text-muted-foreground">Podstawa: {benefit.legal_basis.join("; ")}</p>
+                <p className="text-xs text-muted-foreground">
+                  Podstawa: {benefit.legal_basis.join("; ")}
+                </p>
               )}
             </div>
           </details>
@@ -137,13 +197,21 @@ function DeadlineList({ deadlines }: { deadlines: Deadline[] }) {
       <h3 className="text-lg font-semibold">Ile czasu na wnioski</h3>
       <ul className="flex flex-col gap-3">
         {apply.map((d) => (
-          <li key={d.code} className="flex flex-col gap-1 rounded-xl border bg-card p-4 text-sm">
+          <li
+            key={d.code}
+            className="flex flex-col gap-1 rounded-xl border bg-card p-4 text-sm"
+          >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-medium">
                 {d.person !== "family" && `${PERSON_LABEL[d.person]}: `}
                 {d.title_pl}
               </p>
-              <span className={cn("rounded-md px-2 py-0.5 text-xs font-medium", DEADLINE_CHIP[d.status])}>
+              <span
+                className={cn(
+                  "rounded-md px-2 py-0.5 text-xs font-medium",
+                  DEADLINE_CHIP[d.status],
+                )}
+              >
                 {formatDaysLeft(d.days_left)}
               </span>
             </div>
@@ -151,7 +219,9 @@ function DeadlineList({ deadlines }: { deadlines: Deadline[] }) {
             <p className="text-muted-foreground">{d.note_pl}</p>
             {d.status === "overdue" && d.late_pl && (
               <p className="mt-1 border-l-[5px] border-amber-500 bg-amber-50 p-2">
-                <span className="font-bold">Termin minął – co możesz zrobić: </span>
+                <span className="font-bold">
+                  Termin minął – co możesz zrobić:{" "}
+                </span>
                 {d.late_pl}
               </p>
             )}
@@ -163,8 +233,16 @@ function DeadlineList({ deadlines }: { deadlines: Deadline[] }) {
 }
 
 const RISK_STYLE = {
-  high: { icon: ShieldAlert, box: "border-destructive/40 bg-destructive/5", label: "Ważne" },
-  medium: { icon: AlertTriangle, box: "border-amber-300 bg-amber-50", label: "Uwaga" },
+  high: {
+    icon: ShieldAlert,
+    box: "border-destructive/40 bg-destructive/5",
+    label: "Ważne",
+  },
+  medium: {
+    icon: AlertTriangle,
+    box: "border-amber-300 bg-amber-50",
+    label: "Uwaga",
+  },
   info: { icon: Info, box: "bg-card", label: "Warto wiedzieć" },
 } as const;
 
@@ -177,7 +255,11 @@ function RiskItem({ risk }: { risk: Risk }) {
       <div className="flex flex-col gap-1">
         <p className="font-medium">{risk.title_pl}</p>
         <p className="text-muted-foreground">{risk.text_pl}</p>
-        {risk.legal_basis && <p className="text-xs text-muted-foreground">Podstawa: {risk.legal_basis}</p>}
+        {risk.legal_basis && (
+          <p className="text-xs text-muted-foreground">
+            Podstawa: {risk.legal_basis}
+          </p>
+        )}
       </div>
     </li>
   );
@@ -188,27 +270,50 @@ export function CalculatorResults({ result }: { result: EvaluationResult }) {
   const t = result.totals;
   const hasAmounts = t.family_gross > 0;
   const ordered = [...result.benefits].sort((a, b) => {
-    const rank: Record<BenefitStatus, number> = { eligible: 0, conditional: 1, info: 2, not_eligible: 0 };
+    const rank: Record<BenefitStatus, number> = {
+      eligible: 0,
+      conditional: 1,
+      info: 2,
+      not_eligible: 0,
+    };
     return rank[a.status] - rank[b.status];
   });
 
   return (
     <section aria-label="Wynik" className="flex flex-col gap-8">
       <div className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Wynik</h2>
+        <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+          Wynik
+        </h2>
         <p className="text-sm text-muted-foreground">
-          {result.event_is_estimate ? "Przewidywana data porodu" : "Data zdarzenia"}: {formatDate(result.event_date)}.
-          Parametry prawne na dzień {formatDate(result.params_date)}.
+          {result.event_is_estimate
+            ? "Przewidywana data porodu"
+            : "Data zdarzenia"}
+          : {formatDate(result.event_date)}. Parametry prawne na dzień{" "}
+          {formatDate(result.params_date)}.
         </p>
         {hasAmounts ? (
-          <div className={cn("grid grid-cols-2 gap-3", showFather ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
-            <Stat label="Zasiłki razem (brutto)" value={formatPln(t.family_gross)} />
-            {t.mother_gross > 0 && <Stat label="Mama (brutto)" value={formatPln(t.mother_gross)} />}
-            {showFather && <Stat label="Tata (brutto)" value={formatPln(t.father_gross)} />}
+          <div
+            className={cn(
+              "grid grid-cols-2 gap-3",
+              showFather ? "lg:grid-cols-3" : "lg:grid-cols-2",
+            )}
+          >
+            <Stat
+              label="Zasiłki razem (brutto)"
+              value={formatPln(t.family_gross)}
+            />
+            {t.mother_gross > 0 && (
+              <Stat label="Mama (brutto)" value={formatPln(t.mother_gross)} />
+            )}
+            {showFather && (
+              <Stat label="Tata (brutto)" value={formatPln(t.father_gross)} />
+            )}
           </div>
         ) : (
           <p className="rounded-xl border border-dashed p-4 text-sm">
-            Nie ma kwot do pokazania – sprawdź poniżej, dlaczego zasiłek nie przysługuje lub jakich danych brakuje.
+            Nie ma kwot do pokazania – sprawdź poniżej, dlaczego zasiłek nie
+            przysługuje lub jakich danych brakuje.
           </p>
         )}
       </div>
@@ -225,11 +330,19 @@ export function CalculatorResults({ result }: { result: EvaluationResult }) {
           <CardContent className="flex flex-col gap-3 text-sm">
             {result.averaged_rate.standard_total !== null && (
               <div className="grid grid-cols-2 gap-3">
-                <Stat label="100% + 70%" value={formatPln(result.averaged_rate.standard_total)} />
-                <Stat label="Stała 81,5%" value={formatPln(result.averaged_rate.averaged_total)} />
+                <Stat
+                  label="100% + 70%"
+                  value={formatPln(result.averaged_rate.standard_total)}
+                />
+                <Stat
+                  label="Stała 81,5%"
+                  value={formatPln(result.averaged_rate.averaged_total)}
+                />
               </div>
             )}
-            <p className="text-muted-foreground">{result.averaged_rate.note_pl}</p>
+            <p className="text-muted-foreground">
+              {result.averaged_rate.note_pl}
+            </p>
           </CardContent>
         </Card>
       )}
@@ -248,8 +361,9 @@ export function CalculatorResults({ result }: { result: EvaluationResult }) {
           <CardHeader>
             <CardTitle>Oś czasu</CardTitle>
             <CardDescription>
-              Każdy punkt to zdarzenie: start i koniec urlopu oraz termin do złożenia wniosku. Linie to
-              „gałęzie” mamy i taty, jak w historii zmian.
+              Każdy punkt to zdarzenie: start i koniec urlopu oraz termin do
+              złożenia wniosku. Linie to „gałęzie” mamy i taty, jak w historii
+              zmian.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -281,7 +395,9 @@ export function CalculatorResults({ result }: { result: EvaluationResult }) {
       )}
 
       <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-        <p className="mb-2 font-medium text-foreground">Założenia obliczeń (kwoty brutto)</p>
+        <p className="mb-2 font-medium text-foreground">
+          Założenia obliczeń (kwoty brutto)
+        </p>
         <ul className="list-disc space-y-1 pl-5">
           {result.assumptions_pl.map((assumption) => (
             <li key={assumption}>{assumption}</li>

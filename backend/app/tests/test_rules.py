@@ -60,7 +60,9 @@ def test_seed_rules_are_consistent():
 
 def test_every_rule_cites_a_source():
     for rule in seed_rule_defs():
-        assert rule.source in {"KP", "UZ", "RZ", "RW", "PR", "ZAL"}, rule.code
+        assert rule.source in {"KP", "UZ", "RZ", "RW", "PR", "ZAL", "SR"}, rule.code
+        if rule.source == "SR":  # outside the six sources: only the birth grant, flagged as such
+            assert "becikowe" in rule.code, rule.code
 
 
 @pytest.mark.parametrize(
@@ -493,6 +495,37 @@ def test_sick_leave_in_pregnancy_employer_then_zus():
     assert zus.days == 92 - 33
     profile["mother"]["age_over_50"] = True
     assert periods(run(profile), "mother", "pregnancy_sickness")[0].days == 14
+
+
+def test_sick_leave_after_birth_is_cut_at_the_day_before_birth():
+    """Maternity allowance starts on the birth day, so an e-ZLA running past it is not paid twice."""
+    profile = {
+        "child": {"birth_date": "2025-09-26"},
+        "mother": employee(4666, sick_leave_start="2025-09-15", sick_leave_end="2025-10-07"),
+    }
+    r = run(profile)
+    sick = periods(r, "mother", "pregnancy_sickness")
+    assert sum(p.days for p in sick) == 11  # 15.09-25.09
+    assert max(p.end for p in sick).isoformat() == "2025-09-25"
+    maternity = periods(r, "mother", "maternity")[0]
+    assert all(p.end < maternity.start for p in sick)
+
+
+def test_birth_grant_amount_deadline_and_late_advice():
+    """Becikowe (spoza sześciu źródeł): 1000 zł na dziecko, wniosek w 12 miesięcy od urodzenia."""
+    r = run({"child": {"birth_date": "2026-03-13", "children_count": 2}, "mother": employee()})
+    grant = benefit(r, "becikowe")
+    assert grant.status == "conditional"
+    assert "2 000" in grant.summary_pl and "gmin" in grant.summary_pl
+    deadline = next(d for d in r.deadlines if d.code == "t_becikowe")
+    assert deadline.due == date(2027, 3, 13)
+    late = run({"child": {"birth_date": "2025-06-01"}, "mother": employee()})
+    overdue = next(d for d in late.deadlines if d.code == "t_becikowe")
+    assert overdue.status == "overdue" and "przepadło" in overdue.late_pl
+    stillborn = run(
+        {"child": {"birth_date": "2026-03-13", "stillborn": True}, "mother": employee()}
+    )
+    assert not any(b.code == "becikowe" for b in stillborn.benefits)
 
 
 # --- Konfigurowalność --------------------------------------------------------------------------

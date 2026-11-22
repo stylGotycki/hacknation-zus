@@ -1,6 +1,6 @@
 # Katalog reguł (seed)
 
-191 reguł ze źródeł: KP – Kodeks pracy, UZ – Ustawa zasiłkowa, RZ – Rozp. – dokumenty, RW – Rozp. – wnioski, PR – Poradnik ZUS 2026, ZAL – Załącznik.
+194 reguł ze źródeł: KP – Kodeks pracy, UZ – Ustawa zasiłkowa, RZ – Rozp. – dokumenty, RW – Rozp. – wnioski, PR – Poradnik ZUS 2026, ZAL – Załącznik.
 Plik generowany: `python scripts/gen_rules_doc.py`. Aktualne reguły (po zmianach w panelu) są w bazie.
 
 ## Zdarzenie i dziecko
@@ -149,7 +149,8 @@ Plik generowany: `python scripts/gen_rules_doc.py`. Aktualne reguły (po zmianac
 | Kod | Rodzaj | Opis | Wyrażenie / warunek | Podstawa |
 |---|---|---|---|---|
 | `koniec_ostatniego_okresu` | Wartość | Ostatni dzień ostatniego zasiłku macierzyńskiego w rodzinie | `najpozniej(tata_rodzicielski_wspolny.koniec, tata_rodzicielski_wylaczny.koniec, mama_rodzicielski.koniec, koniec_ciaglosci, tata_ojcowski.koniec)` | UZ: UZ art. 67 |
-| `t_usredniona` | Termin | Wniosek o stawkę uśrednioną 81,5% | `dodaj_dni(data_zdarzenia, param('averaged_application_deadline_days')) **gdy** mama_uprawniona and dziecko_zyje and usredniona_w_terminie and brak(plan.wniosek_usredniony_zlozony)` | UZ: UZ art. 30a ust. 1–2 |
+| `t_becikowe` | Termin | Wniosek o becikowe | `dodaj_mies(data_zdarzenia, param('birth_grant_months')) **gdy** porod and not dziecko.martwe_urodzenie` | SR: Ustawa o świadczeniach rodzinnych art. 15b; gov.pl – Uzyskaj becikowe |
+| `t_usredniona` | Termin | Wniosek o stawkę uśrednioną 81,5% | `dodaj_dni(data_zdarzenia, param('averaged_application_deadline_days')) **gdy** mama_uprawniona and dziecko_zyje and brak(plan.wniosek_usredniony_zlozony)` | UZ: UZ art. 30a ust. 1–2 |
 | `t_mac_przed` | Termin | Wniosek o urlop macierzyński przed porodem | `dodaj_dni(mama_macierzynski_przed.start, -tabela('application_lead_days', 'maternity_before_birth')) **gdy** mama.pracownik and przed_porodem_dni > 0` | KP: KP art. 177 § 1¹ pkt 1; RW § 2; Poradnik ZUS 2026 |
 | `t_rezygnacja` | Termin | Wniosek mamy o rezygnację z części urlopu | `dodaj_dni(tata_macierzynski.start, -tabela('application_lead_days', 'mother_resignation')) **gdy** mama.pracownik and dla_taty_dni > 0` | KP: KP art. 180 § 8 |
 | `t_tata_macierzynski` | Termin | Wniosek taty o część urlopu macierzyńskiego | `dodaj_dni(tata_macierzynski.start, -tabela('application_lead_days', 'father_maternity_part')) **gdy** tata.pracownik and tata_przejecie_dni > 0 and mama_uprawniona and not zgon_porzucenie_matki` | KP: KP art. 180 § 9 |
@@ -201,12 +202,14 @@ Plik generowany: `python scripts/gen_rules_doc.py`. Aktualne reguły (po zmianac
 | `ojcowski` | Świadczenie | Zasiłek macierzyński za okres urlopu ojcowskiego | `**gdy** tata.obecny and ojcowski_mozliwy` | KP: KP art. 182³; UZ art. 29a ust. 1, art. 31 ust. 1 |
 | `pogrzebowy` | Świadczenie | Zasiłek pogrzebowy | `**gdy** porod and dziecko.martwe_urodzenie` | PR: Poradnik ZUS 2026 – Zasiłek pogrzebowy |
 | `opiekunczy` | Świadczenie | Zasiłek opiekuńczy | `**gdy** dziecko_zyje` | PR: Poradnik ZUS 2026 – Zasiłek opiekuńczy |
+| `becikowe` | Świadczenie | Becikowe – jednorazowa zapomoga z tytułu urodzenia dziecka | `**gdy** porod and not dziecko.martwe_urodzenie` | SR: Ustawa o świadczeniach rodzinnych art. 15b; gov.pl – Uzyskaj becikowe |
 | `swiadczenie_rodzicielskie_info` | Świadczenie | Świadczenie rodzicielskie | `**gdy** (porod or przyjecie) and dziecko_zyje and not mama_uprawniona and not tata_uprawniony` | PR: Poradnik ZUS 2026 – Ważne informacje uzupełniające |
 
 ## Dokumenty
 
 | Kod | Rodzaj | Opis | Wyrażenie / warunek | Podstawa |
 |---|---|---|---|---|
+| `d_becikowe` | Dokument | Becikowe – dokumenty do gminy | `**gdy** porod and not dziecko.martwe_urodzenie` | SR: Ustawa o świadczeniach rodzinnych art. 15b; gov.pl – Uzyskaj becikowe |
 | `d_mac_wniosek_pracodawca` | Dokument | Wniosek o urlop | `**gdy** mama.pracownik and mama_uprawniona and porod` | PR: Poradnik ZUS 2026 – Jak otrzymać zasiłek; RW § 15 |
 | `d_mac_przed_porodem` | Dokument | Zaświadczenie o przewidywanej dacie porodu | `**gdy** porod and przed_porodem_dni > 0` | RZ: RZ § 13 ust. 1 pkt 1; RW § 2; UZ art. 53 ust. 2 |
 | `d_mac_zus` | Dokument | Wniosek do ZUS | `**gdy** mama_uprawniona and mama_platnik == 'zus'` | RZ: RZ § 3, § 12, zał. 6; UZ art. 61b ust. 5; Poradnik ZUS 2026 |

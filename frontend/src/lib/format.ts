@@ -1,7 +1,14 @@
 /** Formatting helpers for Polish UI text. */
 
-const pln = new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN" });
-const dateFmt = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short", year: "numeric" });
+const pln = new Intl.NumberFormat("pl-PL", {
+  style: "currency",
+  currency: "PLN",
+});
+const dateFmt = new Intl.DateTimeFormat("pl-PL", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
 
 export const formatPln = (value: number | null | undefined) =>
   value === null || value === undefined ? "–" : pln.format(value);
@@ -14,7 +21,9 @@ export function formatDate(iso: string | null | undefined): string {
 }
 
 export const formatPercent = (rate: number | null | undefined) =>
-  rate === null || rate === undefined ? "–" : `${(rate * 100).toLocaleString("pl-PL", { maximumFractionDigits: 1 })}%`;
+  rate === null || rate === undefined
+    ? "–"
+    : `${(rate * 100).toLocaleString("pl-PL", { maximumFractionDigits: 1 })}%`;
 
 export function formatWeeks(weeks: number | null | undefined): string {
   if (weeks === null || weeks === undefined) return "–";
@@ -31,7 +40,9 @@ export function formatDaysLeft(days: number): string {
     if (n === 1) return one;
     const lastTwo = n % 100;
     const last = n % 10;
-    return last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14) ? few : many;
+    return last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14)
+      ? few
+      : many;
   };
   if (days === 0) return "Dziś ostatni dzień";
   if (days < 0) {
@@ -43,6 +54,7 @@ export function formatDaysLeft(days: number): string {
     const months = Math.round(days / 30);
     return `Zostało ok. ${months} ${plural(months, "miesiąc", "miesiące", "miesięcy")}`;
   }
-  const verb = days === 1 ? "Został" : plural(days, "Został", "Zostały", "Zostało");
+  const verb =
+    days === 1 ? "Został" : plural(days, "Został", "Zostały", "Zostało");
   return `${verb} ${days} ${plural(days, "dzień", "dni", "dni")}`;
 }

@@ -87,7 +87,7 @@ def test_table_parameter_keeps_keys(client):
 
 
 def test_admin_sets_application_status_with_note(client):
-    owner = {"X-Owner-Id": "admin-test"}
+    owner = {"X-Owner-Id": "mobywatel-admin-test"}
     data = {
         "first_name": "A",
         "last_name": "B",
@@ -103,7 +103,7 @@ def test_admin_sets_application_status_with_note(client):
         "/api/applications", json={"form_code": "leave_paternity", "data": data}, headers=owner
     ).json()["id"]
     listed = client.get("/api/admin/applications", headers=ADMIN).json()
-    assert any(a["id"] == app_id and a["owner_id"] == "admin-test" for a in listed)
+    assert any(a["id"] == app_id and a["owner_id"] == "mobywatel-admin-test" for a in listed)
     r = client.post(
         f"/api/admin/applications/{app_id}/status",
         json={"status": "decided", "note": "Przyznano"},
@@ -130,7 +130,7 @@ def test_every_parameter_has_a_polish_label_and_group(client):
 
 
 def test_change_today_applies_to_new_applications_only(client):
-    owner = {"X-Owner-Id": "snapshot-test"}
+    owner = {"X-Owner-Id": "mobywatel-snapshot-test"}
     data = {
         "first_name": "A",
         "last_name": "B",
@@ -169,6 +169,6 @@ def test_change_today_applies_to_new_applications_only(client):
         app = db.scalar(
             select(Application)
             .join(Family, Family.id == Application.family_id)
-            .where(Family.owner_id == "snapshot-test")
+            .where(Family.owner_id == "mobywatel-snapshot-test")
         )
         assert app.params_snapshot[key] == before

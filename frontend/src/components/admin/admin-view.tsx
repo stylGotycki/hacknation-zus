@@ -23,7 +23,8 @@ import { DependenciesTab, DictionaryTab } from "./dictionary-tab";
 import { RulesTab } from "./rules-tab";
 import { TestTab } from "./test-tab";
 
-type Tab = "parameters" | "rules" | "dictionary" | "graph" | "test" | "applications";
+type Tab =
+  "parameters" | "rules" | "dictionary" | "graph" | "test" | "applications";
 const TABS: [Tab, string][] = [
   ["parameters", "Parametry i stawki"],
   ["rules", "Reguły"],
@@ -39,7 +40,10 @@ const STATUS_LABEL: Record<ApplicationStatus, string> = {
   in_progress: "W rozpatrzeniu",
   decided: "Rozpatrzony",
 };
-const RECIPIENT: Record<string, string> = { zus: "ZUS", registry: "Urząd stanu cywilnego" };
+const RECIPIENT: Record<string, string> = {
+  zus: "ZUS",
+  registry: "Urząd stanu cywilnego",
+};
 
 // Order of groups in the panel (anything else goes last) – same as backend parameter_labels.GROUP_ORDER.
 const GROUP_ORDER = [
@@ -67,15 +71,22 @@ const UNIT: Record<string, string> = {
 };
 
 const todayIso = () => new Date().toLocaleDateString("sv-SE");
-const plNumber = (n: number) => n.toLocaleString("pl-PL", { maximumFractionDigits: 2 });
+const plNumber = (n: number) =>
+  n.toLocaleString("pl-PL", { maximumFractionDigits: 2 });
 
 /** Stored value -> what the administrator types (percentages are stored as fractions). */
-const toInput = (v: number, unit: string) => (unit === "pct" ? +(v * 100).toFixed(4) : v);
-const fromInput = (v: number, unit: string) => (unit === "pct" ? +(v / 100).toFixed(6) : v);
+const toInput = (v: number, unit: string) =>
+  unit === "pct" ? +(v * 100).toFixed(4) : v;
+const fromInput = (v: number, unit: string) =>
+  unit === "pct" ? +(v / 100).toFixed(6) : v;
 
 function formatScalar(v: unknown, unit: string): string {
   if (v === null || v === undefined) return "nie ustalono";
-  if (Array.isArray(v)) return v.map((x) => formatScalar(x, "number")).join("–") + (UNIT[unit] ? ` ${UNIT[unit]}` : "");
+  if (Array.isArray(v))
+    return (
+      v.map((x) => formatScalar(x, "number")).join("–") +
+      (UNIT[unit] ? ` ${UNIT[unit]}` : "")
+    );
   if (typeof v !== "number") return String(v);
   const n = plNumber(toInput(v, unit));
   return unit === "pct" ? `${n}%` : `${n}${UNIT[unit] ? ` ${UNIT[unit]}` : ""}`;
@@ -89,7 +100,9 @@ function ValueView({ p }: { p: AdminParameter }) {
       <span className="flex flex-wrap gap-x-3 gap-y-0.5">
         {entries.map(([k, v]) => (
           <span key={k} className="whitespace-nowrap">
-            <span className="text-muted-foreground">{p.value_labels[k] ?? k}:</span>{" "}
+            <span className="text-muted-foreground">
+              {p.value_labels[k] ?? k}:
+            </span>{" "}
             <b>{formatScalar(v, p.unit)}</b>
           </span>
         ))}
@@ -101,10 +114,14 @@ function ValueView({ p }: { p: AdminParameter }) {
 
 function errorText(err: unknown): string {
   const raw = err instanceof Error ? err.message : "";
-  if (raw.includes("API 422") && raw.includes("past")) return "Zmiana nie może działać wstecz – dotyczy nowych wniosków.";
-  if (raw.includes("API 422")) return "Nowa wartość musi mieć tę samą postać co obecna (liczby w tych samych polach).";
-  if (raw.includes("API 409")) return "Istnieje już późniejsza wersja tego parametru – zmień ją albo usuń w historii.";
-  if (raw.includes("API 401")) return "Sesja administratora wygasła – zaloguj się ponownie.";
+  if (raw.includes("API 422") && raw.includes("past"))
+    return "Zmiana nie może działać wstecz – dotyczy nowych wniosków.";
+  if (raw.includes("API 422"))
+    return "Nowa wartość musi mieć tę samą postać co obecna (liczby w tych samych polach).";
+  if (raw.includes("API 409"))
+    return "Istnieje już późniejsza wersja tego parametru – zmień ją albo usuń w historii.";
+  if (raw.includes("API 401"))
+    return "Sesja administratora wygasła – zaloguj się ponownie.";
   return "Nie udało się zapisać zmiany.";
 }
 
@@ -129,10 +146,20 @@ function Login({ onLogin }: { onLogin: (token: string) => void }) {
   }
 
   return (
-    <form onSubmit={submit} className="flex max-w-sm flex-col gap-4 border border-border p-5">
-      <p className="text-sm text-muted-foreground">Hasło administratora (w wersji demonstracyjnej: admin).</p>
+    <form
+      onSubmit={submit}
+      className="flex max-w-sm flex-col gap-4 border border-border p-5"
+    >
+      <p className="text-sm text-muted-foreground">
+        Hasło administratora (w wersji demonstracyjnej: admin).
+      </p>
       <Field label="Hasło">
-        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
+        <Input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoFocus
+        />
       </Field>
       {error && (
         <p role="alert" className="text-sm text-destructive">
@@ -158,15 +185,19 @@ function Editor({
   onDone: (message: string) => void;
   onCancel: () => void;
 }) {
-  const isTable = p.value !== null && typeof p.value === "object" && !Array.isArray(p.value);
+  const isTable =
+    p.value !== null && typeof p.value === "object" && !Array.isArray(p.value);
   const initial: Record<string, number | number[]> = isTable
     ? Object.fromEntries(
-        Object.entries(p.value as Record<string, number | number[]>).map(([k, v]) => [
-          k,
-          Array.isArray(v) ? v : toInput(v, p.unit),
-        ]),
+        Object.entries(p.value as Record<string, number | number[]>).map(
+          ([k, v]) => [k, Array.isArray(v) ? v : toInput(v, p.unit)],
+        ),
       )
-    : { value: Array.isArray(p.value) ? (p.value as number[]) : toInput(p.value as number, p.unit) };
+    : {
+        value: Array.isArray(p.value)
+          ? (p.value as number[])
+          : toInput(p.value as number, p.unit),
+      };
   const [fields, setFields] = useState(initial);
   const [later, setLater] = useState(false);
   const [validFrom, setValidFrom] = useState(todayIso());
@@ -174,15 +205,19 @@ function Editor({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const set = (k: string, v: number | number[]) => setFields((f) => ({ ...f, [k]: v }));
-  const build = (v: number | number[]) => (Array.isArray(v) ? v : fromInput(v, p.unit));
+  const set = (k: string, v: number | number[]) =>
+    setFields((f) => ({ ...f, [k]: v }));
+  const build = (v: number | number[]) =>
+    Array.isArray(v) ? v : fromInput(v, p.unit);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     const value = isTable
-      ? Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, build(v)]))
+      ? Object.fromEntries(
+          Object.entries(fields).map(([k, v]) => [k, build(v)]),
+        )
       : build(fields.value);
     try {
       const res = await adminAddVersion(token, p.key, {
@@ -212,7 +247,12 @@ function Editor({
               type="number"
               step="any"
               value={x}
-              onChange={(e) => set(k, v.map((y, j) => (j === i ? Number(e.target.value) : y)))}
+              onChange={(e) =>
+                set(
+                  k,
+                  v.map((y, j) => (j === i ? Number(e.target.value) : y)),
+                )
+              }
               className="h-9"
             />
           ))}
@@ -221,35 +261,67 @@ function Editor({
     ) : (
       <Field key={k} label={label}>
         <div className="flex items-center gap-2">
-          <Input type="number" step="any" value={v} onChange={(e) => set(k, Number(e.target.value))} className="h-9" />
-          <span className="w-10 shrink-0 text-sm text-muted-foreground">{UNIT[p.unit]}</span>
+          <Input
+            type="number"
+            step="any"
+            value={v}
+            onChange={(e) => set(k, Number(e.target.value))}
+            className="h-9"
+          />
+          <span className="w-10 shrink-0 text-sm text-muted-foreground">
+            {UNIT[p.unit]}
+          </span>
         </div>
       </Field>
     );
 
   return (
-    <form onSubmit={save} className="flex flex-col gap-3 border-l-[5px] border-primary bg-muted p-4">
+    <form
+      onSubmit={save}
+      className="flex flex-col gap-3 border-l-[5px] border-primary bg-muted p-4"
+    >
       <p className="text-sm text-muted-foreground">{p.description_pl}</p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {Object.entries(fields).map(([k, v]) =>
-          numberInput(k, v, isTable ? (p.value_labels[k] ?? k) : "Nowa wartość"),
+          numberInput(
+            k,
+            v,
+            isTable ? (p.value_labels[k] ?? k) : "Nowa wartość",
+          ),
         )}
       </div>
       <Field label="Podstawa prawna">
-        <Input value={basis} onChange={(e) => setBasis(e.target.value)} className="h-9" />
+        <Input
+          value={basis}
+          onChange={(e) => setBasis(e.target.value)}
+          className="h-9"
+        />
       </Field>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={later} onChange={(e) => setLater(e.target.checked)} className="accent-primary" />
+        <input
+          type="checkbox"
+          checked={later}
+          onChange={(e) => setLater(e.target.checked)}
+          className="accent-primary"
+        />
         Przepis wchodzi w życie później – ustaw datę
       </label>
       {later && (
         <Field label="Obowiązuje od" className="max-w-xs">
-          <Input type="date" value={validFrom} min={todayIso()} onChange={(e) => setValidFrom(e.target.value)} className="h-9" />
+          <Input
+            type="date"
+            value={validFrom}
+            min={todayIso()}
+            onChange={(e) => setValidFrom(e.target.value)}
+            className="h-9"
+          />
         </Field>
       )}
       <p className="flex items-start gap-2 text-sm">
         <Info className="mt-0.5 size-4 shrink-0 text-navy" />
-        Zmiana obejmie wnioski składane od {later ? formatDate(validFrom) : "dziś"}. Wnioski już złożone się nie zmienią.
+        Zmiana obejmie wnioski składane od{" "}
+        {later ? formatDate(validFrom) : "dziś"}. Wnioski już złożone się nie
+        zmienią.
       </p>
       {error && (
         <p role="alert" className="text-sm font-bold text-destructive">
@@ -289,28 +361,40 @@ function ParametersTab({ token }: { token: string }) {
   // key -> versions (newest first), grouped and filtered
   const groups = useMemo(() => {
     const byKey = new Map<string, AdminParameter[]>();
-    for (const row of rows ?? []) byKey.set(row.key, [...(byKey.get(row.key) ?? []), row]);
+    for (const row of rows ?? [])
+      byKey.set(row.key, [...(byKey.get(row.key) ?? []), row]);
     const q = query.trim().toLowerCase();
     const out = new Map<string, AdminParameter[][]>();
     for (const versions of byKey.values()) {
       const shown = versions.find((v) => v.current) ?? versions[0];
       if (group && shown.group_pl !== group) continue;
-      if (q && !`${shown.label_pl} ${shown.description_pl}`.toLowerCase().includes(q)) continue;
+      if (
+        q &&
+        !`${shown.label_pl} ${shown.description_pl}`.toLowerCase().includes(q)
+      )
+        continue;
       out.set(shown.group_pl, [...(out.get(shown.group_pl) ?? []), versions]);
     }
-    const rank = (g: string) => (GROUP_ORDER.indexOf(g) + 1 || 99);
+    const rank = (g: string) => GROUP_ORDER.indexOf(g) + 1 || 99;
     return [...out.entries()].sort(([a], [b]) => rank(a) - rank(b));
   }, [rows, query, group]);
 
   const allGroups = useMemo(
-    () => [...new Set((rows ?? []).map((r) => r.group_pl))].sort((a, b) => (GROUP_ORDER.indexOf(a) + 1 || 99) - (GROUP_ORDER.indexOf(b) + 1 || 99)),
+    () =>
+      [...new Set((rows ?? []).map((r) => r.group_pl))].sort(
+        (a, b) =>
+          (GROUP_ORDER.indexOf(a) + 1 || 99) -
+          (GROUP_ORDER.indexOf(b) + 1 || 99),
+      ),
     [rows],
   );
 
   async function remove(p: AdminParameter) {
     try {
       await adminDeleteVersion(token, p.key, p.valid_from);
-      setNotice(`Usunięto zmianę „${p.label_pl}” z ${formatDate(p.valid_from)} – wraca poprzednia wartość.`);
+      setNotice(
+        `Usunięto zmianę „${p.label_pl}” z ${formatDate(p.valid_from)} – wraca poprzednia wartość.`,
+      );
       await load();
     } catch {
       setError("Nie udało się usunąć zmiany.");
@@ -330,7 +414,12 @@ function ParametersTab({ token }: { token: string }) {
             aria-label="Szukaj parametru"
           />
         </label>
-        <Select value={group} onChange={(e) => setGroup(e.target.value)} className="h-10" aria-label="Grupa">
+        <Select
+          value={group}
+          onChange={(e) => setGroup(e.target.value)}
+          className="h-10"
+          aria-label="Grupa"
+        >
           <option value="">Wszystkie grupy</option>
           {allGroups.map((g) => (
             <option key={g}>{g}</option>
@@ -338,12 +427,18 @@ function ParametersTab({ token }: { token: string }) {
         </Select>
       </div>
       {notice && (
-        <div role="status" className="border-l-[5px] border-primary bg-secondary p-3 text-sm">
+        <div
+          role="status"
+          className="border-l-[5px] border-primary bg-secondary p-3 text-sm"
+        >
           {notice}
         </div>
       )}
       {error && (
-        <div role="alert" className="border-l-[5px] border-destructive bg-muted p-3 text-sm">
+        <div
+          role="alert"
+          className="border-l-[5px] border-destructive bg-muted p-3 text-sm"
+        >
           {error}
         </div>
       )}
@@ -351,7 +446,9 @@ function ParametersTab({ token }: { token: string }) {
 
       {groups.map(([name, items]) => (
         <section key={name}>
-          <h2 className="border-b-2 border-primary pb-1 text-base font-bold">{name}</h2>
+          <h2 className="border-b-2 border-primary pb-1 text-base font-bold">
+            {name}
+          </h2>
           <table className="w-full text-sm">
             <tbody>
               {items.map((versions) => {
@@ -366,7 +463,8 @@ function ParametersTab({ token }: { token: string }) {
                         </span>
                         {future && (
                           <span className="mt-0.5 block text-xs text-navy">
-                            od {formatDate(future.valid_from)}: {formatScalar(future.value, future.unit)}
+                            od {formatDate(future.valid_from)}:{" "}
+                            {formatScalar(future.value, future.unit)}
                           </span>
                         )}
                       </td>
@@ -378,11 +476,18 @@ function ParametersTab({ token }: { token: string }) {
                         {versions.length > 1 && (
                           <button
                             type="button"
-                            onClick={() => setHistory(history === p.key ? null : p.key)}
+                            onClick={() =>
+                              setHistory(history === p.key ? null : p.key)
+                            }
                             className="mt-0.5 flex items-center gap-0.5 text-link hover:underline"
                           >
                             historia ({versions.length})
-                            <ChevronDown className={cn("size-3", history === p.key && "rotate-180")} />
+                            <ChevronDown
+                              className={cn(
+                                "size-3",
+                                history === p.key && "rotate-180",
+                              )}
+                            />
                           </button>
                         )}
                       </td>
@@ -390,7 +495,9 @@ function ParametersTab({ token }: { token: string }) {
                         <Button
                           size="sm"
                           variant={editing === p.key ? "default" : "outline"}
-                          onClick={() => setEditing(editing === p.key ? null : p.key)}
+                          onClick={() =>
+                            setEditing(editing === p.key ? null : p.key)
+                          }
                         >
                           Zmień
                         </Button>
@@ -401,14 +508,28 @@ function ParametersTab({ token }: { token: string }) {
                         <td colSpan={4} className="bg-muted px-3 py-2">
                           <ul className="flex flex-col gap-1 text-xs">
                             {versions.map((v) => (
-                              <li key={v.valid_from} className="flex flex-wrap items-center gap-2">
+                              <li
+                                key={v.valid_from}
+                                className="flex flex-wrap items-center gap-2"
+                              >
                                 <span className="w-44">
-                                  {formatDate(v.valid_from)} – {v.valid_to ? formatDate(v.valid_to) : "bez końca"}
+                                  {formatDate(v.valid_from)} –{" "}
+                                  {v.valid_to
+                                    ? formatDate(v.valid_to)
+                                    : "bez końca"}
                                 </span>
                                 <ValueView p={v} />
-                                {v.current && <span className="font-bold text-primary">obowiązuje</span>}
+                                {v.current && (
+                                  <span className="font-bold text-primary">
+                                    obowiązuje
+                                  </span>
+                                )}
                                 {!v.from_seed && (
-                                  <button type="button" className="text-destructive hover:underline" onClick={() => remove(v)}>
+                                  <button
+                                    type="button"
+                                    className="text-destructive hover:underline"
+                                    onClick={() => remove(v)}
+                                  >
                                     cofnij tę zmianę
                                   </button>
                                 )}
@@ -442,7 +563,11 @@ function ParametersTab({ token }: { token: string }) {
           </table>
         </section>
       ))}
-      {rows && groups.length === 0 && <p className="text-sm text-muted-foreground">Brak parametrów dla tego wyszukiwania.</p>}
+      {rows && groups.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          Brak parametrów dla tego wyszukiwania.
+        </p>
+      )}
     </div>
   );
 }
@@ -471,9 +596,19 @@ function ApplicationsTab({ token }: { token: string }) {
     }
   }
 
-  if (error) return <p role="alert" className="text-sm text-destructive">{error}</p>;
+  if (error)
+    return (
+      <p role="alert" className="text-sm text-destructive">
+        {error}
+      </p>
+    );
   if (!rows) return <Loader2 className="animate-spin text-muted-foreground" />;
-  if (rows.length === 0) return <p className="text-sm text-muted-foreground">Nikt nie złożył jeszcze wniosku.</p>;
+  if (rows.length === 0)
+    return (
+      <p className="text-sm text-muted-foreground">
+        Nikt nie złożył jeszcze wniosku.
+      </p>
+    );
 
   return (
     <div className="overflow-x-auto">
@@ -499,16 +634,24 @@ function ApplicationsTab({ token }: { token: string }) {
                   {a.last_note ? ` · ${a.last_note}` : ""}
                 </span>
               </td>
-              <td className="py-2 pr-3">{RECIPIENT[a.submitted_to ?? ""] ?? "Pracodawca"}</td>
+              <td className="py-2 pr-3">
+                {RECIPIENT[a.submitted_to ?? ""] ?? "Pracodawca"}
+              </td>
               <td className="py-2 pr-3 text-xs">
                 {a.created_at ? formatDate(a.created_at.slice(0, 10)) : "–"}
-                {a.params_count > 0 && <span className="block text-muted-foreground">parametry z dnia złożenia</span>}
+                {a.params_count > 0 && (
+                  <span className="block text-muted-foreground">
+                    parametry z dnia złożenia
+                  </span>
+                )}
               </td>
               <td className="py-1.5 pr-3">
                 <Input
                   placeholder="opcjonalnie"
                   value={notes[a.id] ?? ""}
-                  onChange={(e) => setNotes((n) => ({ ...n, [a.id]: e.target.value }))}
+                  onChange={(e) =>
+                    setNotes((n) => ({ ...n, [a.id]: e.target.value }))
+                  }
                   className="h-9"
                   aria-label={`Notatka do wniosku ${a.id}`}
                 />
@@ -516,15 +659,19 @@ function ApplicationsTab({ token }: { token: string }) {
               <td className="py-1.5">
                 <Select
                   value={a.status}
-                  onChange={(e) => change(a.id, e.target.value as ApplicationStatus)}
+                  onChange={(e) =>
+                    change(a.id, e.target.value as ApplicationStatus)
+                  }
                   className="h-9"
                   aria-label={`Status wniosku ${a.id}`}
                 >
-                  {(Object.keys(STATUS_LABEL) as ApplicationStatus[]).map((s) => (
-                    <option key={s} value={s}>
-                      {STATUS_LABEL[s]}
-                    </option>
-                  ))}
+                  {(Object.keys(STATUS_LABEL) as ApplicationStatus[]).map(
+                    (s) => (
+                      <option key={s} value={s}>
+                        {STATUS_LABEL[s]}
+                      </option>
+                    ),
+                  )}
                 </Select>
               </td>
             </tr>
@@ -562,7 +709,9 @@ export function AdminView() {
               onClick={() => setTab(id)}
               className={cn(
                 "-mb-px border-b-4 px-4 py-2 text-[15px] font-bold",
-                tab === id ? "border-primary text-foreground" : "border-transparent text-link hover:underline",
+                tab === id
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-link hover:underline",
               )}
             >
               {label}
@@ -583,8 +732,9 @@ export function AdminView() {
       {tab === "parameters" && (
         <p className="flex items-start gap-2 text-sm">
           <Info className="mt-0.5 size-4 shrink-0 text-navy" />
-          Zmiana parametru obejmuje wnioski składane od dziś (albo od wskazanej daty wejścia przepisu w życie). Wnioski
-          już złożone zachowują wartości z dnia złożenia.
+          Zmiana parametru obejmuje wnioski składane od dziś (albo od wskazanej
+          daty wejścia przepisu w życie). Wnioski już złożone zachowują wartości
+          z dnia złożenia.
         </p>
       )}
       {tab === "parameters" && <ParametersTab token={token} />}

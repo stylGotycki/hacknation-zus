@@ -46,9 +46,12 @@ def _iso(value: date | None) -> str | None:
 
 
 def suggest(
-    result: EvaluationResult, profile: dict, identity: dict | None = None
+    result: EvaluationResult,
+    profile: dict,
+    identity: dict | None = None,
+    known: dict[str, dict] | None = None,
 ) -> list[Suggestion]:
-    """`identity` = {"role": "mother"|"father", "first_name", "last_name", "pesel"} of the logged-in citizen."""
+    """`identity` = the logged-in citizen; `known` = data of both parents typed in earlier forms."""
     out: list[Suggestion] = []
     child = profile.get("child") or {}
     situation = child.get("situation") or "birth"
@@ -60,10 +63,21 @@ def suggest(
         data = {k: v for k, v in data.items() if v not in (None, "")}
         if len(definition.roles) > 1:
             data["applicant_role"] = person
-        if identity and identity.get("role") == person:
-            for key in ("first_name", "last_name", "pesel"):
-                if identity.get(key):
-                    data.setdefault(key, identity[key])
+        field_keys = {f.key for step in definition.steps for f in step.fields}
+        for key, value in (known or {}).get(person, {}).items():
+            if key in field_keys:
+                data.setdefault(key, value)
+        other = "father" if person == "mother" else "mother"
+        for form_key, key in (
+            ("other_first_name", "first_name"),
+            ("other_last_name", "last_name"),
+            ("other_pesel", "pesel"),
+            ("other_address", "address"),
+        ):
+            if (known or {}).get(other, {}).get(key) and any(
+                f.key == form_key for s in definition.steps for f in s.fields
+            ):
+                data.setdefault(form_key, known[other][key])
         title = definition.title_pl[0].lower() + definition.title_pl[1:]
         out.append(
             Suggestion(
