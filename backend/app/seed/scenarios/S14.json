@@ -1,0 +1,26 @@
+{
+  "id": "S14",
+  "title_pl": "Przysposobienie dziecka",
+  "description_pl": "Rodzice przyjęli na wychowanie 4-letnie dziecko i wystąpili do sądu o przysposobienie. Urlop na warunkach urlopu macierzyńskiego wykorzystuje mama, urlop ojcowski tata.",
+  "tags": [
+    "przysposobienie",
+    "tata"
+  ],
+  "profile": {
+    "child": {
+      "situation": "adoption",
+      "placement_date": "2026-11-02",
+      "age_years": 4
+    },
+    "mother": {
+      "employment": "employee",
+      "average_monthly_base": 6600,
+      "employer_insured_count": 50
+    },
+    "father": {
+      "employment": "contract",
+      "sickness_insurance": "voluntary",
+      "average_monthly_base": 5000
+    }
+  }
+}

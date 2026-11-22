@@ -1,0 +1,22 @@
+{
+  "id": "S13",
+  "title_pl": "Mama bez ubezpieczenia, tata pracownik",
+  "description_pl": "Mama nie ma tytułu do ubezpieczenia chorobowego. Tata może skorzystać z urlopu ojcowskiego i całego urlopu rodzicielskiego.",
+  "tags": [
+    "tata",
+    "brak ubezpieczenia mamy"
+  ],
+  "profile": {
+    "child": {
+      "birth_date": "2026-10-28"
+    },
+    "mother": {
+      "employment": "unemployed"
+    },
+    "father": {
+      "employment": "employee",
+      "average_monthly_base": 7400,
+      "employer_insured_count": 50
+    }
+  }
+}

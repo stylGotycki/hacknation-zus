@@ -1,7 +1,7 @@
 """Form definitions (E6). Keys are English; every label shown to the user is Polish.
 
 The leave requests are designed here (the task asks to design them). `zus_zam` is a simplified
-version of the ZUS ZAM form (since 24.10.2026 it also replaces ZUR and ZAO) – it is a simulation,
+version of the ZUS ZAM form (since 24.10.2026 it also replaces ZUR and ZAO) - it is a simulation,
 not the official printout.
 """
 
@@ -70,9 +70,18 @@ FORMS: dict[str, FormDefinition] = {
             FormStep(
                 title_pl="Dziecko i termin urlopu",
                 fields=[
-                    FormField(key="child_date", label_pl="Data porodu (przewidywana lub rzeczywista)", type="date", required=True),
-                    FormField(key="leave_start", label_pl="Początek urlopu", type="date", required=True),
-                    FormField(key="leave_end", label_pl="Koniec urlopu", type="date", required=True),
+                    FormField(
+                        key="child_date",
+                        label_pl="Data porodu (przewidywana lub rzeczywista)",
+                        type="date",
+                        required=True,
+                    ),
+                    FormField(
+                        key="leave_start", label_pl="Początek urlopu", type="date", required=True
+                    ),
+                    FormField(
+                        key="leave_end", label_pl="Koniec urlopu", type="date", required=True
+                    ),
                     FormField(
                         key="with_parental",
                         label_pl="Zaraz po macierzyńskim chcę wykorzystać urlop rodzicielski (jeden wniosek)",
@@ -95,16 +104,30 @@ FORMS: dict[str, FormDefinition] = {
             FormStep(
                 title_pl="Termin urlopu",
                 fields=[
-                    FormField(key="leave_start", label_pl="Początek urlopu", type="date", required=True),
-                    FormField(key="leave_end", label_pl="Koniec urlopu", type="date", required=True),
-                    FormField(key="part_number", label_pl="Numer części urlopu (1–5)", type="number", required=True),
+                    FormField(
+                        key="leave_start", label_pl="Początek urlopu", type="date", required=True
+                    ),
+                    FormField(
+                        key="leave_end", label_pl="Koniec urlopu", type="date", required=True
+                    ),
+                    FormField(
+                        key="part_number",
+                        label_pl="Numer części urlopu (1–5)",
+                        type="number",
+                        required=True,
+                    ),
                     FormField(
                         key="work_percent",
                         label_pl="Pracuję w czasie urlopu (% etatu)",
                         type="number",
                         hint_pl="0 – pełny urlop; maksymalnie 50%.",
                     ),
-                    FormField(key="child_date", label_pl="Data urodzenia dziecka", type="date", required=True),
+                    FormField(
+                        key="child_date",
+                        label_pl="Data urodzenia dziecka",
+                        type="date",
+                        required=True,
+                    ),
                 ],
             ),
             FormStep(title_pl="Oświadczenie", fields=[_DECLARATION]),
@@ -121,9 +144,18 @@ FORMS: dict[str, FormDefinition] = {
             FormStep(
                 title_pl="Termin urlopu",
                 fields=[
-                    FormField(key="leave_start", label_pl="Początek urlopu", type="date", required=True),
-                    FormField(key="leave_end", label_pl="Koniec urlopu", type="date", required=True),
-                    FormField(key="child_date", label_pl="Data urodzenia dziecka", type="date", required=True),
+                    FormField(
+                        key="leave_start", label_pl="Początek urlopu", type="date", required=True
+                    ),
+                    FormField(
+                        key="leave_end", label_pl="Koniec urlopu", type="date", required=True
+                    ),
+                    FormField(
+                        key="child_date",
+                        label_pl="Data urodzenia dziecka",
+                        type="date",
+                        required=True,
+                    ),
                 ],
             ),
             FormStep(title_pl="Oświadczenie", fields=[_DECLARATION]),
@@ -140,16 +172,33 @@ FORMS: dict[str, FormDefinition] = {
             FormStep(
                 title_pl="Dziecko",
                 fields=[
-                    FormField(key="child_date", label_pl="Data urodzenia / przyjęcia dziecka", type="date", required=True),
-                    FormField(key="children_count", label_pl="Liczba dzieci", type="number", required=True),
+                    FormField(
+                        key="child_date",
+                        label_pl="Data urodzenia / przyjęcia dziecka",
+                        type="date",
+                        required=True,
+                    ),
+                    FormField(
+                        key="children_count", label_pl="Liczba dzieci", type="number", required=True
+                    ),
                 ],
             ),
             FormStep(
                 title_pl="Za jaki okres",
                 fields=[
-                    FormField(key="for_maternity", label_pl="Za okres urlopu macierzyńskiego", type="checkbox"),
-                    FormField(key="for_parental", label_pl="Za okres urlopu rodzicielskiego", type="checkbox"),
-                    FormField(key="for_paternity", label_pl="Za okres urlopu ojcowskiego", type="checkbox"),
+                    FormField(
+                        key="for_maternity",
+                        label_pl="Za okres urlopu macierzyńskiego",
+                        type="checkbox",
+                    ),
+                    FormField(
+                        key="for_parental",
+                        label_pl="Za okres urlopu rodzicielskiego",
+                        type="checkbox",
+                    ),
+                    FormField(
+                        key="for_paternity", label_pl="Za okres urlopu ojcowskiego", type="checkbox"
+                    ),
                     FormField(key="benefit_start", label_pl="Od dnia", type="date", required=True),
                     FormField(key="benefit_end", label_pl="Do dnia", type="date", required=True),
                 ],
@@ -157,7 +206,12 @@ FORMS: dict[str, FormDefinition] = {
             FormStep(
                 title_pl="Wypłata",
                 fields=[
-                    FormField(key="bank_account", label_pl="Numer rachunku bankowego", required=True, hint_pl="26 cyfr"),
+                    FormField(
+                        key="bank_account",
+                        label_pl="Numer rachunku bankowego",
+                        required=True,
+                        hint_pl="26 cyfr",
+                    ),
                     FormField(
                         key="attachments",
                         label_pl="Załączniki (np. zaświadczenie „Za życiem”, zaświadczenie ze szpitala)",
@@ -181,8 +235,13 @@ FORMS: dict[str, FormDefinition] = {
                     FormField(key="first_name", label_pl="Imię", required=True),
                     FormField(key="last_name", label_pl="Nazwisko", required=True),
                     FormField(key="pesel", label_pl="PESEL", required=True, hint_pl="11 cyfr"),
-                    FormField(key="relation", label_pl="Kim jesteś dla dziecka", type="select", required=True,
-                              options=[("parent", "Rodzic"), ("guardian", "Opiekun prawny")]),
+                    FormField(
+                        key="relation",
+                        label_pl="Kim jesteś dla dziecka",
+                        type="select",
+                        required=True,
+                        options=[("parent", "Rodzic"), ("guardian", "Opiekun prawny")],
+                    ),
                 ],
             ),
             FormStep(
@@ -190,10 +249,20 @@ FORMS: dict[str, FormDefinition] = {
                 fields=[
                     FormField(key="child_first_name", label_pl="Imię dziecka", required=True),
                     FormField(key="child_last_name", label_pl="Nazwisko dziecka", required=True),
-                    FormField(key="child_date", label_pl="Data urodzenia dziecka", type="date", required=True),
+                    FormField(
+                        key="child_date",
+                        label_pl="Data urodzenia dziecka",
+                        type="date",
+                        required=True,
+                    ),
                     FormField(key="birth_place", label_pl="Miejsce urodzenia", required=True),
-                    FormField(key="extract_type", label_pl="Rodzaj odpisu", type="select", required=True,
-                              options=[("short", "Skrócony"), ("full", "Zupełny")]),
+                    FormField(
+                        key="extract_type",
+                        label_pl="Rodzaj odpisu",
+                        type="select",
+                        required=True,
+                        options=[("short", "Skrócony"), ("full", "Zupełny")],
+                    ),
                     FormField(key="purpose", label_pl="Cel (np. wniosek o zasiłek)"),
                 ],
             ),

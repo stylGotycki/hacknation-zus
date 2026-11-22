@@ -15,7 +15,6 @@
       "employer_insured_count": 50,
       "sick_leave_start": "2026-07-01",
       "sick_leave_end": "2026-10-19",
-      "on_pregnancy_sick_leave": true,
       "insured_days": 400
     }
   }

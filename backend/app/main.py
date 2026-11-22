@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from app.api import api_router
 from app.core.config import get_settings
 from app.core.db import SessionLocal, init_db
-from app.seed import seed_parameters
+from app.seed import seed_parameters, seed_rules
 
 settings = get_settings()
 
@@ -17,6 +17,7 @@ async def lifespan(_: FastAPI):
     if settings.seed_on_startup:
         with SessionLocal() as db:
             seed_parameters(db)
+            seed_rules(db)
     yield
 
 

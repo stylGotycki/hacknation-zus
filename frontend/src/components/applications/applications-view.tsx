@@ -129,7 +129,7 @@ export function ApplicationsView() {
               Policz najpierw uprawnienia – podpowiemy, jakie wnioski złożyć, i wypełnimy je danymi z wyliczenia.
             </p>
             <Button asChild>
-              <Link href={PUBLIC_PATHS.wizard}>Sprawdź uprawnienia</Link>
+              <Link href={PUBLIC_PATHS.calculator}>Sprawdź uprawnienia</Link>
             </Button>
           </div>
         )}

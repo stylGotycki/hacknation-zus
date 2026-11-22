@@ -1,16 +1,47 @@
 "use client";
 
-import { Baby, Menu, X } from "lucide-react";
+import { ChevronRight, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { AccessibilityToggles } from "@/components/zus/accessibility-toggles";
+import { SiteSearch } from "@/components/zus/site-search";
 import type { Citizen } from "@/lib/api";
-import { LOGIN_ITEM, NAV_ITEMS } from "@/lib/nav";
-import { isRouteActive } from "@/lib/routes";
+import { LOGIN_ITEM, sideNavItems } from "@/lib/nav";
+import { isRouteActive, PUBLIC_PATHS } from "@/lib/routes";
 import { endSession, loadCitizen } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import { CONTAINER, GUIDE_NAME } from "@/lib/zus-site";
+
+function DemoBanner() {
+  return (
+    <div className="bg-navy text-white">
+      <p className={cn(CONTAINER, "py-1.5 text-center text-xs sm:text-sm")}>
+        Wersja demonstracyjna — projekt HackNation 2026, nie jest serwisem ZUS. Dane i logowanie są symulowane.
+      </p>
+    </div>
+  );
+}
+
+function Logo() {
+  return (
+    <Link href="/" className="flex shrink-0 items-center gap-4" aria-label={`${GUIDE_NAME} – strona główna`}>
+      {/* Official file goes to public/brand/logo-zus.svg (a neutral placeholder ships with the repo). */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/brand/logo-zus.svg" alt="ZUS" className="h-[40px] w-auto sm:h-[46px] lg:h-[57px]" />
+      <span className="hidden border-l-2 border-primary pl-4 text-[20px] font-bold leading-tight text-primary sm:block xl:text-[24px]">
+        {GUIDE_NAME}
+      </span>
+    </Link>
+  );
+}
+
+/** Outlined navy button ("Zarejestruj w PUE/eZUS" on zus.pl) and orange one ("Zaloguj do PUE/eZUS"). */
+const navyOutline =
+  "inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-sm border border-navy bg-white px-3 text-sm font-bold text-navy hover:bg-navy hover:text-white";
+const orangeSolid =
+  "inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-sm border border-[#e0a243] bg-orange px-3 text-sm font-bold text-navy hover:brightness-95";
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -25,85 +56,97 @@ export function SiteHeader() {
     return () => window.removeEventListener("parent-guide:session", sync);
   }, []);
 
-  // Close the mobile menu after navigating.
   useEffect(() => setOpen(false), [pathname]);
 
+  const loginButton = citizen ? (
+    <button type="button" className={orangeSolid} onClick={endSession}>
+      {citizen.first_name} · Wyloguj <ChevronRight className="size-4" />
+    </button>
+  ) : (
+    <Link href={LOGIN_ITEM.href} className={orangeSolid}>
+      Zaloguj przez mObywatel <ChevronRight className="size-4" />
+    </Link>
+  );
+
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
-          <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <Baby className="size-5" />
-          </span>
-          <span>Przewodnik rodzica</span>
-        </Link>
+    <header className="bg-background">
+      <a
+        href="#tresc"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:bg-white focus:p-2"
+      >
+        Przejdź do treści
+      </a>
+      <DemoBanner />
 
-        {/* Desktop navigation */}
-        <nav className="ml-auto hidden items-center gap-1 lg:flex" aria-label="Główna nawigacja">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.route}
-              href={item.href}
-              className={cn(
-                "rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
-                isRouteActive(pathname, item.route) && "bg-accent font-medium text-accent-foreground",
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
-          {citizen ? (
-            <Button size="sm" variant="outline" className="ml-2" onClick={endSession}>
-              {citizen.first_name} · Wyloguj
-            </Button>
-          ) : (
-            <Button asChild size="sm" className="ml-2">
-              <Link href={LOGIN_ITEM.href}>{LOGIN_ITEM.label}</Link>
-            </Button>
-          )}
-        </nav>
+      <div className={cn(CONTAINER, "flex h-[84px] items-center gap-5 lg:h-[100px]")}>
+        <Logo />
 
-        {/* Mobile toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="ml-auto lg:hidden"
-          aria-label={open ? "Zamknij menu" : "Otwórz menu"}
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-        >
-          {open ? <X /> : <Menu />}
-        </Button>
+        {/* Desktop utility row */}
+        <div className="ml-auto hidden items-center gap-4 lg:flex">
+          <Link href={`${PUBLIC_PATHS.help}#kontakt`} className="hidden text-sm hover:underline xl:inline">
+            Kontakt
+          </Link>
+          <AccessibilityToggles />
+          <Link href={PUBLIC_PATHS.zus} className={navyOutline}>
+            Dane z ZUS <ChevronRight className="size-4" />
+          </Link>
+          {loginButton}
+          <SiteSearch />
+        </div>
+
+        {/* Mobile: search + menu */}
+        <div className="ml-auto flex items-center gap-5 lg:hidden">
+          <SiteSearch />
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            aria-controls="mobile-menu"
+            className="flex flex-col items-center gap-1 text-sm font-bold text-link"
+          >
+            {open ? <X className="size-9" strokeWidth={1.75} /> : <Menu className="size-9" strokeWidth={1.75} />}
+            Menu
+          </button>
+        </div>
       </div>
 
-      {/* Mobile navigation */}
+      {/* Grey bar under the header, as on zus.pl */}
+      <div className={CONTAINER}>
+        <div className="h-1.5 bg-grey-bar" />
+      </div>
+
+      {/* Mobile menu */}
       {open && (
-        <nav className="border-t px-4 pb-4 pt-2 lg:hidden" aria-label="Nawigacja mobilna">
-          <ul className="flex flex-col gap-1">
-            {NAV_ITEMS.map((item) => (
-              <li key={item.route}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-3 text-base",
-                    isRouteActive(pathname, item.route) ? "bg-accent font-medium" : "hover:bg-accent",
-                  )}
-                >
-                  <item.icon className="size-5 text-primary" />
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-          {citizen ? (
-            <Button className="mt-3 w-full" size="lg" variant="outline" onClick={endSession}>
-              {citizen.first_name} · Wyloguj
-            </Button>
-          ) : (
-            <Button asChild className="mt-3 w-full" size="lg">
-              <Link href={LOGIN_ITEM.href}>{LOGIN_ITEM.label}</Link>
-            </Button>
-          )}
+        <nav id="mobile-menu" aria-label="Menu" className="border-b border-band-border lg:hidden">
+          <div className={cn(CONTAINER, "flex flex-col gap-4 py-4")}>
+            <div className="flex flex-col gap-2">
+              {loginButton}
+              <Link href={PUBLIC_PATHS.zus} className={navyOutline}>
+                Dane z ZUS <ChevronRight className="size-4" />
+              </Link>
+            </div>
+            <ul>
+              {sideNavItems().map((item) => (
+                <li key={item.route} className="border-b border-border">
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      "flex items-center justify-between py-3 font-bold",
+                      isRouteActive(pathname, item.route) ? "text-foreground" : "text-link",
+                    )}
+                  >
+                    {item.sideLabel ?? item.label} <ChevronRight className="size-4" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="flex items-center justify-between">
+              <Link href={`${PUBLIC_PATHS.help}#kontakt`} className="text-sm">
+                Kontakt
+              </Link>
+              <AccessibilityToggles />
+            </div>
+          </div>
         </nav>
       )}
     </header>

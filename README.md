@@ -22,7 +22,7 @@ make up
 | http://localhost/api/docs | dokumentacja API (Swagger) |
 | http://localhost/api/health | `{"status":"ok"}` |
 | http://localhost/api/parameters?date=2026-11-21 | parametry prawne na dany dzień |
-| `POST` http://localhost/api/rules/evaluate | silnik reguł: profil rodziny → uprawnienia, kwoty, oś czasu, ryzyka |
+| `POST` http://localhost/api/rules/evaluate | silnik reguł (reguły z bazy): profil rodziny → uprawnienia, kwoty, oś czasu, terminy, ryzyka |
 
 Port 80 zajęty? Ustaw `HTTP_PORT=8080` w `.env` i otwórz http://localhost:8080.
 
@@ -72,7 +72,8 @@ Next.js ma trasy po angielsku (`/calculator`). Szczegóły w sekcji „Adresy st
 │       ├── core/             # config.py (ustawienia z env), db.py (silnik, sesja, Base)
 │       ├── models/           # tabele SQLAlchemy: legal_parameter, family, application, draft
 │       ├── api/              # endpointy: health.py, parameters.py
-│       ├── rules/            # E1 – silnik reguł (czyste funkcje, bez bazy i HTTP) – patrz „Silnik reguł”
+│       ├── engine/           # E1 – silnik reguł: język wyrażeń, fakty, runtime, serwis
+│       ├── rules/            # typy API silnika (FamilyProfile, EvaluationResult)
 │       ├── mocks/            # E7 – mObywatel, dane ZUS, e-ZLA, PUE
 │       ├── seed/             # parametry prawne 2026 + (E3) scenariusze ze spraw
 │       └── tests/            # pytest na SQLite w pamięci
@@ -97,14 +98,14 @@ Tłumaczy je nginx (`infra/nginx/default.conf`):
 
 | Adres w przeglądarce | Trasa i folder w `frontend/src/app/` | Nazwa w menu | Epik |
 | --- | --- | --- | --- |
-| `/` | `page.tsx` | strona główna | E9 |
-| `/kreator` | `wizard/` | Sprawdź uprawnienia | E4 |
-| `/kalkulator` | `calculator/` | Kalkulator | E2 |
-| `/os-czasu` | `timeline/` | Oś czasu | E5 |
-| `/wnioski` | `applications/` | Wnioski | E6 |
-| `/przyklady` | `examples/` | Przykłady | E3 |
-| `/logowanie` | `login/` | Zaloguj przez mObywatel | E7 |
-| `/admin` | `admin/` | Admin | E8 |
+| `/` | `(guide)/page.tsx` | strona główna | E9 |
+| `/kalkulator` | `(guide)/calculator/` | Sprawdź uprawnienia i policz zasiłek | E2/E4 |
+| `/os-czasu` | `(guide)/timeline/` | Oś czasu | E5 |
+| `/wnioski` | `(guide)/applications/` | Wnioski | E6 |
+| `/dane-zus` | `(guide)/zus/` | Dane z ZUS | E7 |
+| `/pomoc` | `(guide)/help/` | Pomoc i wsparcie | – |
+| `/logowanie` | `(guide)/login/` | Zaloguj przez mObywatel | E7 |
+| `/admin` | `admin/` (własny układ) | Panel administratora | E8 |
 
 Adresy API (`/api/...`) zostają po angielsku.
 
@@ -120,40 +121,79 @@ komentarze, komunikaty błędów API i logi. Wyjątek: publiczne adresy stron s�
 napisy w interfejsie, opisy parametrów, podstawy prawne, dokumentacja.
 Pełna zasada jest w `CLAUDE.md`.
 
-## Silnik reguł (E1)
+## Silnik reguł (E1) – reguły jako dane
 
-`backend/app/rules/` to czyste funkcje: profil rodziny (`FamilyProfile`) + parametry prawne (`Params`)
-→ wynik (`EvaluationResult`). Wywołanie: `POST /api/rules/evaluate?date=RRRR-MM-DD` (data wybiera
-wersję parametrów prawnych; domyślnie dziś). Błędny plan (np. 7 tygodni przed porodem) → 422,
-brak parametru na dany dzień → 409.
+Reguły nie są w kodzie. Leżą w tabeli `rule` (seed: `backend/app/seed/rules_2026.py`, 191 reguł) i powstały
+**wyłącznie** z sześciu źródeł zadania: Kodeks pracy (KP), ustawa zasiłkowa (UZ), rozporządzenie o dokumentach do
+zasiłków (RZ), rozporządzenie o wnioskach (RW), Poradnik ZUS 2026 (PR), załącznik o podstawie wymiaru (ZAL). Każda
+reguła ma podstawę prawną i kod źródła. Liczby z przepisów są parametrami (`legal_parameter`), reguły tylko je czytają.
 
-| Moduł | Zawartość |
+Reguła to wyrażenie w prostym, bezpiecznym języku (`app/engine/expressions.py`, polskie nazwy funkcji:
+`jesli`, `dodaj_dni`, `tygodnie`, `param`, `tabela`…) nad danymi rodziny (`app/engine/facts.py`: `dziecko.*`,
+`mama.*`, `tata.*`, `sytuacja_matki.*`, `plan.*`) i innymi regułami. **Zależności silnik odczytuje sam** z nazw
+w wyrażeniach, liczy reguły w porządku topologicznym i odrzuca cykle (`app/engine/runtime.py`).
+
+| Rodzaj | Co robi |
 | --- | --- |
-| `models.py` | profil wejściowy (dziecko, rodzice, plan) i typy wyniku |
-| `eligibility.py` | ubezpieczenie w dniu porodu, zadłużenie składkowe, płatnik (pracodawca / ZUS) |
-| `leaves.py` | wymiary urlopów: macierzyński, uzupełniający, rodzicielski, ojcowski, martwe urodzenie, zgon dziecka, adopcja |
-| `money.py` | podstawa wymiaru, kwota za okres (1/30 za niepełny miesiąc), szacunek netto, minimum 1000 zł |
-| `planning.py` | walidacja planu i domyślna oś czasu; stawki 100% / 70% / 81,5% |
-| `benefits.py` | lista świadczeń z uzasadnieniem, dokumentami, terminami i miejscem złożenia wniosku |
-| `risks.py` | ryzyka utraty lub obniżenia świadczeń |
+| `wartosc` | nazwana wartość (np. `mama_uprawniona`, `wymiar_macierzynski_dni`) |
+| `okres` | urlop / zasiłek na osi czasu: początek, liczba dni, stawka, praca, osoba, płatnik |
+| `swiadczenie` | karta wyniku: status, opis z `{wyrażeniami}`, okresy |
+| `dokument`, `termin`, `ryzyko`, `informacja`, `zalozenie` | treści wyniku |
+| `walidacja` | warunek prawdziwy → plan odrzucony (HTTP 422 z komunikatem) |
 
-Świadczenia w wyniku: zasiłek chorobowy w ciąży (kod B), zasiłek w wysokości macierzyńskiego,
-macierzyński, uzupełniający, rodzicielski, ojcowski, opiekuńczy, a gdy nikt nie ma ubezpieczenia –
-świadczenie rodzicielskie. Przy poprawnym wniosku do 21 dni po porodzie silnik porównuje też
-warianty „100% + 70%” i „stała 81,5%”.
+`POST /api/rules/evaluate` czyta reguły i parametry z bazy (`app/engine/service.py` → `EvaluationResult`).
+Kwoty są brutto (podstawa − 13,71%, płaca minimalna dla pełnego etatu, limit 23 550 zł dla niepracowników, 1/30 za dzień).
+Netto nie liczymy, bo podatek nie wynika ze źródeł.
 
-Wynik zawiera też `deadlines`: ile dni zostało na złożenie każdego wniosku (`days_left`, ujemne = termin
-minął) oraz do kiedy trzeba wykorzystać urlopy. Terminy wniosków do pracodawcy są parametrami prawnymi
-(`application_lead_days`).
+Scenariusze i maszyna stanów: [`docs/maszyna-stanow.md`](docs/maszyna-stanow.md) (diagramy Mermaid + PNG w
+`docs/diagramy/`). Katalog reguł: [`docs/reguly.md`](docs/reguly.md) (`python scripts/gen_rules_doc.py`).
 
-Kalkulator na stronie `/kalkulator` korzysta z tego endpointu. Jego wynik widać też na `/os-czasu` –
-pionowej osi w stylu historii commitów (gałąź mamy i taty, każde zdarzenie to punkt). Tata, który nie
-ma żadnego zasiłku, nie pojawia się w podsumowaniu ani na osi.
+## Panel administratora (`/admin`, hasło demo `admin`)
 
-## Kolory
+Osobna, prosta strona (bez układu przewodnika), zakładki:
 
-Interfejs używa palety ZUS: zieleń `#007834` (podstawowa), `#006837` (hover), granat `#003B73`,
-błękit `#0066B3`, mięta `#E6F4EC` i neutralne szarości. Wartości są w `frontend/src/app/globals.css`.
+- **Parametry i stawki** – zmiana wartości od dziś lub od daty wejścia w życie; złożone wnioski zachowują parametry z dnia złożenia.
+- **Reguły** – lista z wyszukiwarką, edycja wyrażeń, „Sprawdź” (walidacja całego zestawu: nazwy, parametry, cykle),
+  zapis z powodem zmiany, historia, wyłączenie, przywrócenie wersji ze źródeł, nowe reguły.
+- **Słownik danych** – dane rodziny, funkcje, parametry i rodzaje reguł.
+- **Zależności** – z czego korzysta reguła i na co wpływa.
+- **Test na profilu** – persona albo JSON → wynik i wartości wszystkich reguł.
+- **Wnioski** – decyzje płatnika.
+
+API: `GET|POST /api/admin/rules`, `PUT|DELETE /api/admin/rules/{kod}`, `POST /api/admin/rules/validate`,
+`POST /api/admin/rules/{kod}/reset`, `GET /api/admin/rules/{kod}/history`, `GET /api/admin/rules/dictionary`,
+`GET /api/admin/rules/graph`, `POST /api/admin/rules/test`. Złożony wniosek zapisuje `rules_version`.
+
+## Kalkulator krok po kroku
+
+`/kalkulator` to jeden kreator: sytuacja → dziecko → rodzina → praca mamy → praca taty → szczególne sytuacje → plan → wynik.
+Kroki, które nie dotyczą rodziny, są pomijane: bez taty nie ma pytań o podział, martwe urodzenie i zgon dziecka da się
+wskazać tylko po porodzie, a plan nie pojawia się przy martwym urodzeniu ani gdy nikt nie jest ubezpieczony. Wynik
+widać też na `/os-czasu` (każde zdarzenie ma ikonę, kliknięcie kropki otwiera szczegóły wniosku).
+
+## Wygląd: osobna aplikacja w stylu zus.pl
+
+Przewodnik to osobna aplikacja (własna nazwa w nagłówku, bez menu głównego zus.pl), ale wygląda jak serwis ZUS.
+Wartości zmierzone na zrzutach zus.pl (listopad 2026) są w `frontend/src/app/globals.css`:
+
+- font Lato (`@fontsource/lato`, bez pobierania z Google przy buildzie),
+- zieleń `#007834` (aktywna pozycja menu bocznego, stopka), zieleń linków `#11783b`,
+  granat `#00416e` (przyciski dostępności i obrysowane), pomarańcz `#fab856` (przycisk logowania),
+  linie `#e7e7e7`, pas okruszków `#f5f5f5`, szare ikony treści `#777777`,
+- kontener 1200 px, menu boczne 300 px z zieloną linią 7 px, okruszki 52 px.
+
+Ramka: `components/site-header.tsx` (pasek „wersja demonstracyjna”, logo + nazwa, przyciski),
+`components/zus/guide-frame.tsx` (okruszki + menu boczne + treść), `components/site-footer.tsx` (zielona stopka),
+`components/zus/page-heading.tsx` (ikona + H1 na każdej stronie). Przyciski „Powiększ tekst” i „Wysoki kontrast”
+działają naprawdę.
+
+**Logo:** w repo jest neutralny placeholder `frontend/public/brand/logo-zus.svg`. Podmień go oficjalnym plikiem:
+
+```bash
+curl -o frontend/public/brand/logo-zus.svg https://www.zus.pl/o/portal-theme/img/logo/logo_zus_darker_with_text.svg
+```
+
+Strona nigdzie nie zbiera loginów ani haseł: logowanie mObywatel to wybór osoby testowej.
 
 ## Parametry prawne
 
@@ -172,33 +212,21 @@ PostgreSQL 16 · nginx · Docker Compose.
 
 Opis i linki (ELI, API Sejmu, zus.pl, gov.pl) w [`docs/zrodla-prawne.md`](docs/zrodla-prawne.md).
 
-## Rozszerzone obliczenia silnika
+## Osoby testowe (E3)
 
-- zasiłek opiekuńczy: limity 60/30/14 dni, limit całej rodziny, wiek dziecka, inny domownik, kwota za dni (`care`),
-- zasiłek chorobowy w ciąży: wynagrodzenie chorobowe 33/14 dni, zasiłek ZUS, okres 270 dni, kwota za okres,
-- urlop rodzicielski w częściach z datami (`plan.parental_blocks`, do 5 części na rodzica, rodzice mogą korzystać równolegle),
-- urlop ojcowski z datami startu (`plan.paternity_starts`, termin 12 miesięcy),
-- podstawa z historii miesięcy (`monthly_bases`, także krótsza niż 12 miesięcy),
-- wyjątki ubezpieczenia: urlop wychowawczy, umowa na czas określony przedłużona do porodu.
-
-## Scenariusze (E3)
-
-Dwanaście person w `backend/app/seed/scenarios/` (`GET /api/scenarios`), strona `/przyklady` liczy wybraną
-sytuację silnikiem i zapisuje wynik dla osi czasu.
-
-## Kreator (E4)
-
-`/kreator` – pytania krok po kroku (sytuacja, data, szczegóły dziecka, mama, tata, plan urlopów), na końcu wynik z silnika
-(`/api/rules/evaluate`) i przejście do osi czasu lub kalkulatora. Używa tego samego formularza i `buildProfile` co kalkulator.
+Piętnaście person w `backend/app/seed/scenarios/` (`GET /api/scenarios`) to osoby do wyboru w symulowanym logowaniu
+mObywatel – ich dane trafiają do „Dane z ZUS” i kalkulatora. Osobnej strony z przykładowymi wyliczeniami nie ma.
 
 ## Oś czasu ze szczegółami (E5)
 
-`/os-czasu`: przy każdym urlopie i terminie przycisk „Szczegóły” rozwija kwoty, płatnika, miejsce złożenia wniosku,
-termin, dokumenty, uzasadnienie i podstawę prawną; filtr Oboje / Mama / Tata pokazuje gałąź wybranego rodzica.
+`/os-czasu`: grube linie (gałąź rodziny, mamy i taty), każde zdarzenie ma ikonę w kropce: poród, macierzyński,
+uzupełniający, rodzicielski, ojcowski, praca/powrót, termin wniosku, „wykorzystaj do”, złożony wniosek.
+Kliknięcie kropki otwiera szczegóły: wniosek do złożenia (do kogo, termin, „Wypełnij wniosek”) albo status
+złożonego wniosku z historią, a pod spodem kwoty, płatnik, dokumenty i podstawa prawna. Filtr Oboje / Mama / Tata.
 
 ## Wnioski (E6)
 
-`/wnioski`: po wyliczeniu (kalkulator, kreator lub przykład) strona podpowiada wnioski do złożenia i wypełnia je danymi
+`/wnioski`: po wyliczeniu (kalkulator albo „Dane z ZUS”) strona podpowiada wnioski do złożenia i wypełnia je danymi
 z wyniku. Pracownik dostaje wnioski o urlopy (macierzyński, rodzicielski, ojcowski – adresat pracodawca), pozostali
 rodzice – uproszczony ZAM do ZUS. Wersje robocze zapisują się same, wysłany wniosek ma historię statusów
 (`submitted` → `in_progress` → `decided`; kolejny etap symuluje przycisk w demo).
@@ -221,17 +249,19 @@ Wszystko to symulacja na danych przykładowych, wyprowadzonych z 12 person (E3).
 
 ## Panel administratora (E8)
 
-`/admin` (hasło: zmienna `ADMIN_TOKEN`, domyślnie `admin` – zmień poza środowiskiem lokalnym).
+`/admin` (hasło: zmienna `ADMIN_TOKEN`, domyślnie `admin` – zmień poza środowiskiem lokalnym). Wszystko po polsku.
 
-- **Parametry prawne:** wyszukiwanie, historia wersji, „Zmień” = nowa wersja od wybranej daty (musi być późniejsza niż
-  obecna). Poprzednia wersja kończy się dzień wcześniej, dawne sprawy liczą się według dawnych przepisów, a kalkulator
-  korzysta z nowej wartości od razu. Nowa wartość musi mieć ten sam typ i klucze co poprzednia. Wersje dodane w panelu
-  można usunąć (poprzednia otwiera się ponownie); wersje z seedu zostają.
-- **Seed a panel:** klucz, który ma wersję spoza seedu, jest pomijany przy starcie – seed nie nadpisuje zmian administratora.
-- **Wnioski:** lista wszystkich złożonych wniosków i zmiana statusu z notatką (obieg po stronie płatnika).
-- API: `GET /api/admin/parameters`, `POST /api/admin/parameters/{key}/versions`,
-  `DELETE /api/admin/parameters/{key}/versions/{valid_from}`, `GET /api/admin/applications`,
-  `POST /api/admin/applications/{id}/status` (nagłówek `X-Admin-Token`).
+- **Parametry:** pogrupowane (stawki, urlopy, podstawa i kwoty, terminy…), jedna linia na parametr: polska nazwa,
+  wartość z jednostką („20 tyg.”, „81,5%”, „1 dziecko: 20 tyg. · 2 dzieci: 31 tyg.”), data, przycisk „Zmień”.
+  Edycja w wierszu: jedno pole liczbowe na wartość (tabele – jedno na wiersz), procenty wpisuje się jako procenty.
+  Nazwy, grupy, jednostki i opisy kluczy tabel są w bazie (kolumny `label_pl`, `group_pl`, `unit`, `value_labels`,
+  seed: `backend/app/seed/parameter_labels.py`).
+- **Zmiany dotyczą nowych wniosków:** zapis tworzy wersję od dziś (druga zmiana tego samego dnia ją nadpisuje);
+  opcjonalnie od późniejszej daty, gdy przepis wejdzie w życie później. Wstecz nie można. Każdy złożony wniosek
+  zapisuje parametry z dnia złożenia (`application.params_snapshot`), więc późniejsza zmiana go nie dotyka.
+  Historia zmian i „cofnij tę zmianę” przy każdym parametrze.
+- **Wnioski:** tabela złożonych wniosków ze zmianą statusu i notatką (obieg po stronie płatnika).
+- Po zmianie modelu: `make reset-db`.
 
 ## Strona startowa i pomoc (E9)
 

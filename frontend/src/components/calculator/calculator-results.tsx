@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { VerticalTimeline } from "@/components/timeline/vertical-timeline";
 import type { BenefitResult, BenefitStatus, Deadline, EvaluationResult, Person, Risk } from "@/lib/api";
 import { formatDate, formatDaysLeft, formatPercent, formatPln, formatWeeks } from "@/lib/format";
-import { fatherHasAllowance, withoutIdleFather } from "@/lib/result-view";
+import { fatherHasAllowance } from "@/lib/result-view";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABEL: Record<BenefitStatus, string> = {
@@ -27,7 +27,6 @@ const PERSON_LABEL: Record<Person, string> = { mother: "Mama", father: "Tata", f
 const PAYER_LABEL = {
   employer: "Wypłaca pracodawca",
   zus: "Wypłaca ZUS",
-  municipality: "Wypłaca gmina",
 } as const;
 
 const DEADLINE_CHIP = {
@@ -68,14 +67,9 @@ function BenefitCard({ benefit }: { benefit: BenefitResult }) {
           </p>
         )}
         {benefit.monthly_gross !== null && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Stat label="Stawka" value={formatPercent(benefit.rate)} />
             <Stat label="Miesięcznie brutto" value={formatPln(benefit.monthly_gross)} />
-            <Stat
-              label="Miesięcznie netto (szac.)"
-              value={formatPln(benefit.monthly_net_estimate)}
-              hint={benefit.raised_to_minimum ? "podwyższone do minimum" : undefined}
-            />
             {benefit.total_gross !== null && (
               <Stat label="Łącznie brutto" value={formatPln(benefit.total_gross)} />
             )}
@@ -103,7 +97,7 @@ function BenefitCard({ benefit }: { benefit: BenefitResult }) {
             </span>
           </p>
         )}
-        {(benefit.reasons_pl.length > 0 || benefit.documents_pl.length > 0) && (
+        {(benefit.reasons_pl.length > 0 || benefit.documents_pl.length > 0 || benefit.legal_basis.length > 0) && (
           <details>
             <summary className="cursor-pointer text-primary">Szczegóły, dokumenty i podstawa prawna</summary>
             <div className="mt-3 flex flex-col gap-3">
@@ -183,9 +177,8 @@ function RiskItem({ risk }: { risk: Risk }) {
   );
 }
 
-export function CalculatorResults({ result: fullResult }: { result: EvaluationResult }) {
-  const showFather = fatherHasAllowance(fullResult);
-  const result = withoutIdleFather(fullResult);
+export function CalculatorResults({ result }: { result: EvaluationResult }) {
+  const showFather = fatherHasAllowance(result);
   const t = result.totals;
   const hasAmounts = t.family_gross > 0;
   const ordered = [...result.benefits].sort((a, b) => {
@@ -202,9 +195,8 @@ export function CalculatorResults({ result: fullResult }: { result: EvaluationRe
           Parametry prawne na dzień {formatDate(result.params_date)}.
         </p>
         {hasAmounts ? (
-          <div className={cn("grid grid-cols-2 gap-3", showFather ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
+          <div className={cn("grid grid-cols-2 gap-3", showFather ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
             <Stat label="Zasiłki razem (brutto)" value={formatPln(t.family_gross)} />
-            <Stat label="Razem netto (szac.)" value={formatPln(t.family_net_estimate)} />
             {t.mother_gross > 0 && <Stat label="Mama (brutto)" value={formatPln(t.mother_gross)} />}
             {showFather && <Stat label="Tata (brutto)" value={formatPln(t.father_gross)} />}
           </div>
@@ -271,8 +263,19 @@ export function CalculatorResults({ result: fullResult }: { result: EvaluationRe
         </div>
       )}
 
+      {result.info_pl.length > 0 && (
+        <div className="flex flex-col gap-2 text-sm">
+          <h3 className="text-lg font-semibold">Warto wiedzieć</h3>
+          <ul className="list-disc space-y-1 pl-5">
+            {result.info_pl.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-        <p className="mb-2 font-medium text-foreground">Założenia obliczeń</p>
+        <p className="mb-2 font-medium text-foreground">Założenia obliczeń (kwoty brutto)</p>
         <ul className="list-disc space-y-1 pl-5">
           {result.assumptions_pl.map((assumption) => (
             <li key={assumption}>{assumption}</li>

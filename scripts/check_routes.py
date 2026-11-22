@@ -3,7 +3,8 @@
 1. frontend/src/lib/routes.ts          PUBLIC_PATHS: English route -> public (Polish) URL
 2. infra/nginx/default.conf            map $frontend_uri (public -> English) and
                                        map $canonical_uri (English -> public)
-3. frontend/src/app/<route>/page.tsx   one folder per English route
+3. frontend/src/app/[(group)/]<route>/page.tsx   one folder per English route
+                                       (route groups like `(guide)` do not change the URL)
 
 Usage: python scripts/check_routes.py   (or `make check-routes`). Exits 1 on any mismatch.
 """
@@ -60,7 +61,8 @@ def main() -> int:
     compare("nginx $canonical_uri", expected_to_public, read_nginx_map("canonical_uri"))
 
     # Every route needs a page, and every page needs a route.
-    page_folders = {p.parent.name for p in APP_DIR.glob("*/page.tsx")}
+    pages = [*APP_DIR.glob("*/page.tsx"), *APP_DIR.glob("(*)/*/page.tsx")]
+    page_folders = {p.parent.name for p in pages if not p.parent.name.startswith("(")}
     for route in sorted(public.keys() - page_folders):
         errors.append(f"routes.ts: '{route}' has no folder frontend/src/app/{route}/page.tsx")
     for folder in sorted(page_folders - public.keys()):

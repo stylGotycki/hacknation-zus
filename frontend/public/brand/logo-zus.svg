@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="250" height="58" viewBox="0 0 250 58" role="img" aria-label="Miejsce na logo ZUS">
+  <!-- Placeholder. Replace this file with the official logo:
+       https://www.zus.pl/o/portal-theme/img/logo/logo_zus_darker_with_text.svg -->
+  <rect x="1" y="1" width="248" height="56" fill="#ffffff" stroke="#9a9a9a" stroke-dasharray="4 3"/>
+  <text x="125" y="25" text-anchor="middle" font-family="Lato, Arial, sans-serif" font-size="13" fill="#676767">Miejsce na logo ZUS</text>
+  <text x="125" y="42" text-anchor="middle" font-family="Lato, Arial, sans-serif" font-size="10" fill="#9a9a9a">public/brand/logo-zus.svg</text>
+</svg>

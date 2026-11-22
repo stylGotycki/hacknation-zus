@@ -1,15 +1,26 @@
+import { ChevronRight, SearchX } from "lucide-react";
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+import { GuideFrame } from "@/components/zus/guide-frame";
+import { PageHeading } from "@/components/zus/page-heading";
 
 export default function NotFound() {
   return (
-    <section className="flex flex-col items-start gap-4">
-      <h1 className="text-2xl font-semibold">Nie znaleziono strony</h1>
-      <p className="text-muted-foreground">Ta strona nie istnieje albo została przeniesiona.</p>
-      <Button asChild>
-        <Link href="/">Wróć na start</Link>
-      </Button>
+    <>
+      <SiteHeader />
+      <GuideFrame>
+    <section className="flex flex-col items-start gap-6">
+      <PageHeading title="Nie znaleziono strony" icon={SearchX}>
+        Ta strona nie istnieje albo została przeniesiona.
+      </PageHeading>
+      <Link href="/" className="inline-flex items-center gap-1 font-bold text-link hover:underline">
+        Wróć do przewodnika <ChevronRight className="size-4" />
+      </Link>
     </section>
+      </GuideFrame>
+      <SiteFooter />
+    </>
   );
 }

@@ -14,7 +14,7 @@ export function HelpView() {
         <div className="grid gap-3 sm:grid-cols-2">
           {OFFICIAL_LINKS.map((link) => (
             <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" className="group">
-              <Card className="h-full transition-shadow group-hover:shadow-md">
+              <Card className="h-full transition-shadow">
                 <CardHeader>
                   <CardTitle className="flex items-start justify-between gap-2 text-base">
                     {link.title}

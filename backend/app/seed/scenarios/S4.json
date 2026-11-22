@@ -21,10 +21,8 @@
       "employer_insured_count": 50
     },
     "plan": {
-      "paternity_starts": [
-        "2026-09-02",
-        "2026-10-15"
-      ]
+      "paternity_start": "2026-09-02",
+      "paternity_parts": 2
     }
   }
 }

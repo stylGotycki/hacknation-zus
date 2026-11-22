@@ -16,6 +16,9 @@
       "employer_insured_count": 50,
       "planned_work_fraction": 0.5
     },
-    "averaged_rate_applied_on": "2026-06-30"
+    "plan": {
+      "averaged_rate": true,
+      "averaged_rate_applied_on": "2026-06-30"
+    }
   }
 }

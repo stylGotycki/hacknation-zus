@@ -28,3 +28,8 @@ class LegalParameter(Base):
     valid_to: Mapped[date | None] = mapped_column(Date, nullable=True)
     description_pl: Mapped[str] = mapped_column(Text, default="")
     legal_basis: Mapped[str] = mapped_column(Text, default="")
+    # Shown in the admin panel instead of the technical key (see app/seed/parameter_labels.py).
+    label_pl: Mapped[str] = mapped_column(String(200), default="")
+    group_pl: Mapped[str] = mapped_column(String(100), default="")
+    unit: Mapped[str] = mapped_column(String(20), default="number")
+    value_labels: Mapped[dict[str, str]] = mapped_column(JSONType, default=dict)

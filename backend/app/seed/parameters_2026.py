@@ -1,19 +1,23 @@
-"""Legal parameters valid in 2026.
+"""Legal parameters valid in 2026 – only values found in the six source documents.
 
-Each entry becomes one `legal_parameter` row. Values are plain JSON: numbers, or objects
-for tables (note: JSON object keys are always strings, e.g. {"1": 20} for one child).
-`legal_basis` is cited at the level we are sure of; precise articles are verified in E1/E8.
+Sources (field `legal_basis` cites the exact place):
+  KP  – Kodeks pracy, wyciąg (t.j. Dz.U. 2026 poz. 1245)
+  UZ  – ustawa zasiłkowa, wyciąg (t.j. Dz.U. 2026 poz. 854)
+  RZ  – rozporządzenie z 27.09.2026 w sprawie dokumentów do zasiłków (Dz.U. 2026 poz. 1316)
+  RW  – rozporządzenie z 11.03.2025 w sprawie wniosków pracowniczych (Dz.U. 2025 poz. 322)
+  PR  – Poradnik dla rodziców i opiekunów dzieci, ZUS 2026 (stan prawny 1.04.2026)
+  ZAL – Załącznik do wyzwania HackNation 2026 (wymiary, wysokość, podstawa wymiaru)
+A value that none of the sources gives is stored as null and must be entered in the admin panel.
 """
 
 from datetime import date
 
-BENEFITS_ACT = (
-    "Ustawa z 25.06.1999 o świadczeniach pieniężnych z ubezpieczenia społecznego "
-    "w razie choroby i macierzyństwa (ustawa zasiłkowa, t.j. Dz.U. 2026 poz. 854)"
-)
-LABOR_CODE = "Kodeks pracy"
-MIN_WAGE_REG = "Rozporządzenie Rady Ministrów w sprawie minimalnego wynagrodzenia za pracę"
-TO_VERIFY = "do weryfikacji artykułu"
+from app.seed.parameter_labels import label_fields
+
+KP = "Kodeks pracy"
+UZ = "Ustawa zasiłkowa"
+PR = "Poradnik ZUS dla rodziców 2026"
+ZAL = "Załącznik do wyzwania"
 
 Y2026 = date(2026, 1, 1)
 
@@ -27,341 +31,346 @@ def p(key: str, value, description_pl: str, legal_basis: str) -> dict:
     }
 
 
+COUNT = lambda a, b, c, d, e: {"1": a, "2": b, "3": c, "4": d, "5": e}  # noqa: E731
+
 PARAMETERS: list[dict] = [
-    # --- Maternity leave ----------------------------------------------------------------------
+    # --- Urlop macierzyński / na warunkach urlopu macierzyńskiego ------------------------------
     p(
         "maternity_leave_weeks",
-        {"1": 20, "2": 31, "3": 33, "4": 35, "5": 37},
-        "Wymiar urlopu macierzyńskiego w tygodniach wg liczby dzieci urodzonych "
-        "przy jednym porodzie (5 = pięcioro i więcej).",
-        f"{LABOR_CODE}, art. 180",
+        COUNT(20, 31, 33, 35, 37),
+        "Wymiar urlopu macierzyńskiego (i urlopu na warunkach urlopu macierzyńskiego) wg liczby "
+        "dzieci urodzonych przy jednym porodzie / przyjętych jednocześnie (5 = pięcioro i więcej).",
+        f"{KP}, art. 180 § 1, art. 183 § 1 i § 1¹; {ZAL}",
     ),
     p(
         "maternity_before_birth_max_weeks",
         6,
-        "Maksymalna część urlopu macierzyńskiego, którą można wykorzystać "
-        "przed przewidywaną datą porodu.",
-        f"{LABOR_CODE}, art. 180",
+        "Najwięcej urlopu macierzyńskiego przed przewidywaną datą porodu.",
+        f"{KP}, art. 180 § 2",
     ),
     p(
         "maternity_mother_mandatory_weeks",
         14,
-        "Część urlopu macierzyńskiego, którą matka musi wykorzystać osobiście "
-        "(po tym czasie może przekazać resztę ojcu).",
-        f"{LABOR_CODE}, art. 180",
+        "Matka może zrezygnować z reszty urlopu (zasiłku) na rzecz ojca po wykorzystaniu tylu tygodni po porodzie.",
+        f"{KP}, art. 180 § 4; {UZ}, art. 29 ust. 3",
+    ),
+    p(
+        "maternity_mother_min_weeks_disabled",
+        8,
+        "Jak wyżej, gdy matka ma orzeczenie o niezdolności do samodzielnej egzystencji.",
+        f"{KP}, art. 180 § 6; {UZ}, art. 29 ust. 5",
+    ),
+    p(
+        "maternity_min_weeks_before_transfer",
+        8,
+        "Po tylu tygodniach po porodzie część urlopu może przejść na ojca przy pobycie matki w szpitalu "
+        "albo porzuceniu dziecka; przy porzuceniu urlop matki po porodzie nie może być krótszy.",
+        f"{KP}, art. 180 § 10 i § 13, art. 182; {UZ}, art. 29 ust. 6 i 7",
     ),
     p(
         "supplementary_maternity_max_weeks",
         {"short": 8, "long": 15},
-        "Uzupełniający urlop macierzyński (wcześniaki / dziecko w szpitalu): "
-        "do 8 lub do 15 tygodni zależnie od sytuacji dziecka.",
-        f"{LABOR_CODE} (urlop uzupełniający, od 2025 r.) – {TO_VERIFY}",
+        "Uzupełniający urlop macierzyński: tydzień za każdy tydzień pobytu dziecka w szpitalu, do 15. tygodnia "
+        "po porodzie (przed 28. tyg. ciąży lub ≤ 1000 g) albo do 8. tygodnia (pozostałe przypadki).",
+        f"{KP}, art. 180² § 1; {ZAL}",
+    ),
+    p(
+        "supplementary_criteria",
+        {
+            "long_gestation_below": 28,
+            "long_weight_max_g": 1000,
+            "preterm_gestation_below": 37,
+            "term_min_stay_days": 2,
+            "term_first_day_from": 5,
+            "term_first_day_to": 28,
+        },
+        "Kryteria uzupełniającego urlopu macierzyńskiego.",
+        f"{KP}, art. 180² § 1",
     ),
     p(
         "stillbirth_maternity_weeks",
         8,
-        "Urlop macierzyński po urodzeniu martwego dziecka lub zgonie dziecka "
-        "przed ukończeniem 8 tygodni życia.",
-        f"{LABOR_CODE}, art. 180",
-    ),
-    p(
-        "child_death_min_days",
-        7,
-        "Minimalny okres urlopu macierzyńskiego przysługujący od dnia zgonu dziecka.",
-        f"{LABOR_CODE}, art. 180",
-    ),
-    # --- Parental leave -----------------------------------------------------------------------
-    p(
-        "parental_leave_weeks",
-        {"single": 41, "multiple": 43, "za_zyciem_single": 65, "za_zyciem_multiple": 67},
-        "Wymiar urlopu rodzicielskiego (łącznie dla obojga rodziców); wyższe wartości "
-        "dla dziecka z zaświadczeniem „Za życiem”.",
-        f"{LABOR_CODE}, art. 182¹ᵃ",
-    ),
-    p(
-        "parental_non_transferable_weeks",
-        9,
-        "Część urlopu rodzicielskiego zarezerwowana dla każdego z rodziców "
-        "– nie można jej przenieść na drugiego.",
-        f"{LABOR_CODE}, art. 182¹ᵃ",
-    ),
-    p(
-        "parental_max_parts",
-        5,
-        "Maksymalna liczba części, na które można podzielić urlop rodzicielski.",
-        f"{LABOR_CODE}, art. 182¹ᵃ",
-    ),
-    p(
-        "parental_deadline_child_age_years",
-        6,
-        "Urlop rodzicielski trzeba wykorzystać do końca roku kalendarzowego, "
-        "w którym dziecko kończy tyle lat.",
-        f"{LABOR_CODE}, art. 182¹ᵃ",
-    ),
-    # --- Paternity leave ----------------------------------------------------------------------
-    p(
-        "paternity_leave_days",
-        14,
-        "Wymiar urlopu ojcowskiego w dniach.",
-        f"{LABOR_CODE}, art. 182³",
-    ),
-    p(
-        "paternity_max_parts",
-        2,
-        "Maksymalna liczba części urlopu ojcowskiego.",
-        f"{LABOR_CODE}, art. 182³",
-    ),
-    p(
-        "paternity_min_part_days",
-        7,
-        "Minimalna długość jednej części urlopu ojcowskiego (w dniach).",
-        f"{LABOR_CODE}, art. 182³",
-    ),
-    p(
-        "paternity_deadline_months",
-        12,
-        "Urlop ojcowski trzeba wykorzystać, zanim dziecko skończy tyle miesięcy.",
-        f"{LABOR_CODE}, art. 182³",
-    ),
-    # --- Benefit rates ------------------------------------------------------------------------
-    p(
-        "rate_maternity",
-        1.00,
-        "Stawka zasiłku macierzyńskiego za okres urlopu macierzyńskiego, "
-        "uzupełniającego i ojcowskiego (100% podstawy).",
-        f"{BENEFITS_ACT}, art. 31",
-    ),
-    p(
-        "rate_parental",
-        0.70,
-        "Stawka zasiłku za okres urlopu rodzicielskiego (70% podstawy).",
-        f"{BENEFITS_ACT}, art. 31",
-    ),
-    p(
-        "rate_averaged",
-        0.815,
-        "Uśredniona stawka (81,5%) za cały okres macierzyńskiego i rodzicielskiego, "
-        "gdy wniosek złożono w terminie; 9 tygodni drugiego rodzica nadal po 70%.",
-        f"{BENEFITS_ACT}, art. 31",
-    ),
-    p(
-        "averaged_application_deadline_days",
-        21,
-        "Termin (dni od porodu) na złożenie wniosku o łączny urlop, "
-        "aby otrzymać stawkę uśrednioną 81,5%.",
-        f"{LABOR_CODE}, art. 180; {BENEFITS_ACT}, art. 31",
-    ),
-    p(
-        "rate_sickness_pregnancy",
-        1.00,
-        "Stawka zasiłku chorobowego za niezdolność do pracy w okresie ciąży (kod B na zwolnieniu).",
-        f"{BENEFITS_ACT}, art. 11",
-    ),
-    p(
-        "rate_care_allowance",
-        0.80,
-        "Stawka zasiłku opiekuńczego (do potwierdzenia).",
-        f"{BENEFITS_ACT} – {TO_VERIFY}",
-    ),
-    # --- Calculation base ---------------------------------------------------------------------
-    p(
-        "social_contribution_deduction",
-        0.1371,
-        "Potrącenie składek społecznych finansowanych przez ubezpieczonego (13,71%) "
-        "przy liczeniu podstawy wymiaru.",
-        BENEFITS_ACT,
-    ),
-    p(
-        "minimum_wage",
-        4806.00,
-        "Minimalne wynagrodzenie za pracę (zł brutto) – dolna granica podstawy "
-        "wymiaru dla pracowników.",
-        f"{MIN_WAGE_REG} w 2026 r.",
-    ),
-    p(
-        "minimum_maternity_benefit_net",
-        1000.00,
-        "Minimalna miesięczna kwota zasiłku macierzyńskiego netto.",
-        f"{BENEFITS_ACT} – {TO_VERIFY}",
-    ),
-    # --- Payer and contribution debt ----------------------------------------------------------
-    p(
-        "payer_threshold_insured",
-        20,
-        "Płatnik zgłaszający więcej niż tylu ubezpieczonych wypłaca zasiłki sam; "
-        "mniejsi płatnicy i JDG – wypłaca ZUS.",
-        f"{BENEFITS_ACT}, art. 61",
-    ),
-    p(
-        "contribution_debt_threshold_ratio",
-        0.01,
-        "Zadłużenie składkowe do 1% minimalnego wynagrodzenia nie blokuje wypłaty zasiłku.",
-        f"{BENEFITS_ACT} – {TO_VERIFY}",
-    ),
-    p(
-        "debt_repayment_window_months",
-        6,
-        "Spłata zadłużenia w tym terminie przywraca prawo do zasiłku za cały okres; "
-        "po terminie – od dnia spłaty.",
-        f"{BENEFITS_ACT} – {TO_VERIFY}",
-    ),
-    # --- Sickness benefit ---------------------------------------------------------------------
-    p(
-        "sickness_waiting_days",
-        {"mandatory": 30, "voluntary": 90},
-        "Okres wyczekiwania na zasiłek chorobowy: 30 dni przy ubezpieczeniu "
-        "obowiązkowym, 90 przy dobrowolnym.",
-        f"{BENEFITS_ACT}, art. 4",
-    ),
-    p(
-        "sickness_employer_paid_days",
-        33,
-        "Liczba dni w roku, za które wynagrodzenie chorobowe płaci pracodawca "
-        "(potem zasiłek z ZUS).",
-        f"{LABOR_CODE}, art. 92",
-    ),
-    p(
-        "sickness_benefit_period_days",
-        270,
-        "Maksymalny okres zasiłkowy przy niezdolności do pracy w czasie ciąży.",
-        f"{BENEFITS_ACT}, art. 8",
-    ),
-    # --- Care allowance -----------------------------------------------------------------------
-    p(
-        "care_allowance_limits_days",
-        {
-            "child_under_8_or_sick_under_14": 60,
-            "other": 14,
-            "disabled_14_17": 30,
-            "total_cap": 60,
-        },
-        "Roczne limity dni zasiłku opiekuńczego wg sytuacji; łącznie nie więcej niż 60 dni.",
-        f"{BENEFITS_ACT}, art. 32–33",
-    ),
-    # --- Supplementary maternity leave (details) ----------------------------------------------
-    p(
-        "supplementary_leave_criteria",
-        {
-            "long_gestation_weeks_below": 28,
-            "long_birth_weight_g_max": 1000,
-            "preterm_gestation_weeks_below": 37,
-            "hospital_from_day_after_birth": 5,
-            "long_horizon_weeks": 15,
-            "short_horizon_weeks": 8,
-            "term_min_stay_days": 2,
-            "term_first_day_window": [5, 28],
-        },
-        "Kryteria uzupełniającego urlopu macierzyńskiego: do 15 tygodni (poród przed 28. tygodniem "
-        "ciąży lub masa do 1000 g), do 8 tygodni (poród przed 37. tygodniem albo dziecko "
-        "urodzone w terminie, ale hospitalizowane co najmniej 2 dni od 5. do 28. dnia życia). "
-        "Wymiar = 1 tydzień za każdy tydzień pobytu dziecka w szpitalu od 5. dnia po porodzie.",
-        f"{LABOR_CODE}, art. 180² (od 19.03.2025)",
-    ),
-    p(
-        "adoption_leave_max_child_age_years",
-        {"foster": 7, "foster_school_deferred": 10, "adoption": 14},
-        "Maksymalny wiek dziecka, przy którym przysługuje urlop na warunkach macierzyńskiego: "
-        "rodzina zastępcza niezawodowa do 7 lat (10 przy odroczonym obowiązku szkolnym), "
-        "wniosek o przysposobienie do 14 lat.",
-        f"{LABOR_CODE}, art. 183",
-    ),
-    p(
-        "parental_work_max_fraction",
-        0.5,
-        "Łącząc urlop rodzicielski z pracą u tego samego pracodawcy, można pracować "
-        "najwyżej w połowie pełnego wymiaru czasu pracy.",
-        f"{LABOR_CODE}, art. 186⁴",
-    ),
-    p(
-        "application_lead_days",
-        {"parental": 21, "paternity": 7, "supplementary": 21},
-        "Na ile dni przed rozpoczęciem urlopu trzeba złożyć wniosek do pracodawcy.",
-        f"{LABOR_CODE}, art. 182¹ᵈ, 182³, 180² – {TO_VERIFY}",
-    ),
-    # --- Fallback benefit for people without sickness insurance ---------------------------------
-    p(
-        "parental_benefit_monthly",
-        1000.00,
-        "Świadczenie rodzicielskie („kosiniakowe”) – stała kwota miesięczna, "
-        "gdy nie przysługuje zasiłek macierzyński.",
-        "Ustawa o świadczeniach rodzinnych – do weryfikacji artykułu",
-    ),
-    p(
-        "parental_benefit_weeks",
-        {"1": 52, "2": 65, "3": 67, "4": 69, "5": 71},
-        "Okres pobierania świadczenia rodzicielskiego w tygodniach wg liczby dzieci "
-        "urodzonych przy jednym porodzie.",
-        "Ustawa o świadczeniach rodzinnych – do weryfikacji artykułu",
-    ),
-    p(
-        "parental_benefit_application_months",
-        3,
-        "Wniosek o świadczenie rodzicielskie złożony w ciągu tylu miesięcy od porodu daje prawo "
-        "do świadczenia od dnia porodu; później – od miesiąca złożenia wniosku.",
-        "Ustawa o świadczeniach rodzinnych – do weryfikacji artykułu",
-    ),
-    p(
-        "additional_care_allowance_weeks",
-        8,
-        "Dodatkowy zasiłek opiekuńczy ojca (matka w szpitalu, niezdolna do samodzielnej "
-        "egzystencji albo porzuciła dziecko): do tylu tygodni, nie dłużej niż do ukończenia "
-        "przez dziecko 8 tygodni życia.",
-        f"{BENEFITS_ACT}, art. 32a",
-    ),
-    p(
-        "employer_sickness_paid_days_over_50",
-        14,
-        "Pracownik, który ukończył 50 lat (w roku poprzedzającym niezdolność), ma wynagrodzenie "
-        "chorobowe od pracodawcy tylko za pierwsze 14 dni w roku, nie 33.",
-        f"{LABOR_CODE}, art. 92",
-    ),
-    p(
-        "gestation_months_for_contract_extension",
-        3,
-        "Umowa na czas określony lub okres próbny, która skończyłaby się po upływie tylu miesięcy "
-        "ciąży, jest przedłużana do dnia porodu.",
-        f"{LABOR_CODE}, art. 177 § 3",
-    ),
-    # --- Net amount estimate (informational only) ------------------------------------------------
-    p(
-        "health_contribution_rate",
-        0.09,
-        "Składka zdrowotna potrącana od zasiłku (do szacunku kwoty netto).",
-        "Ustawa o świadczeniach opieki zdrowotnej – do weryfikacji artykułu",
-    ),
-    p(
-        "income_tax_rate",
-        0.12,
-        "Stawka zaliczki na podatek dochodowy w pierwszym progu (do szacunku kwoty netto).",
-        "Ustawa o podatku dochodowym od osób fizycznych – do weryfikacji artykułu",
-    ),
-    p(
-        "income_tax_monthly_reduction",
-        300.00,
-        "Miesięczna kwota zmniejszająca zaliczkę na podatek (3600 zł rocznie / 12) – "
-        "do szacunku kwoty netto.",
-        "Ustawa o podatku dochodowym od osób fizycznych – do weryfikacji artykułu",
-    ),
-    # --- Misc ---------------------------------------------------------------------------------
-    p(
-        "benefit_days_per_month",
-        30,
-        "Zasiłek za niepełny miesiąc liczy się jako 1/30 miesięcznej kwoty za każdy dzień.",
-        f"{BENEFITS_ACT}, art. 35",
+        "Urlop macierzyński po urodzeniu martwego dziecka lub zgonie dziecka przed upływem 8 tygodni życia.",
+        f"{KP}, art. 180¹ § 1",
     ),
     p(
         "stillbirth_child_death_weeks_limit",
         8,
-        "Zgon dziecka przed ukończeniem tylu tygodni życia traktuje się jak martwe urodzenie "
-        "przy ustalaniu wymiaru urlopu macierzyńskiego.",
-        f"{LABOR_CODE}, art. 180",
+        "Granica wieku dziecka (w tygodniach życia) przy zgonie dziecka.",
+        f"{KP}, art. 180¹ § 1–2",
     ),
     p(
-        "care_allowance_age_limits_years",
-        {"healthy_child": 8, "sick_child": 14, "disabled_child": 18},
-        "Granice wieku dziecka przy zasiłku opiekuńczym (zdrowe dziecko – do 8 lat, "
-        "chore – do 14, niepełnosprawne – do 18).",
-        f"{BENEFITS_ACT}, art. 32",
+        "child_death_min_days",
+        7,
+        "Urlop macierzyński trwa co najmniej tyle dni od dnia zgonu dziecka.",
+        f"{KP}, art. 180¹ § 1–2",
+    ),
+    p(
+        "taken_in_min_maternity_weeks",
+        9,
+        "Urlop (zasiłek) na warunkach urlopu macierzyńskiego nie może trwać krócej niż 9 tygodni.",
+        f"{KP}, art. 183 § 3; {ZAL}",
+    ),
+    p(
+        "adoption_leave_max_child_age_years",
+        {"adoption": 14, "foster": 7, "foster_school_deferred": 10},
+        "Wiek dziecka przyjętego na wychowanie, do którego przysługuje urlop i zasiłek.",
+        f"{UZ}, art. 29 ust. 1 pkt 2–3; {KP}, art. 183 § 1 i § 1¹",
+    ),
+    # --- Urlop rodzicielski --------------------------------------------------------------------
+    p(
+        "parental_leave_weeks",
+        {
+            "single": 41,
+            "multiple": 43,
+            "za_zyciem_single": 65,
+            "za_zyciem_multiple": 67,
+            "taken_in_short": 38,
+            "za_zyciem_taken_in_short": 62,
+        },
+        "Wymiar urlopu rodzicielskiego dla obojga rodziców łącznie. „taken_in_short” – przy przyjęciu dziecka "
+        "w przypadku z art. 183 § 3 KP (urlop na warunkach urlopu macierzyńskiego ograniczony do 9 tygodni).",
+        f"{KP}, art. 182¹ᵃ § 1–3, art. 183 § 4–4⁵; {ZAL}",
+    ),
+    p(
+        "parental_non_transferable_weeks",
+        9,
+        "Wyłączna, nieprzenoszalna część urlopu rodzicielskiego każdego z rodziców.",
+        f"{KP}, art. 182¹ᵃ § 4–5; {UZ}, art. 31 ust. 3f",
+    ),
+    p(
+        "parental_max_parts",
+        5,
+        "Urlop rodzicielski: jednorazowo albo najwyżej w tylu częściach.",
+        f"{KP}, art. 182¹ᶜ, art. 183 § 4⁶",
+    ),
+    p(
+        "parental_deadline_child_age_years",
+        6,
+        "Urlop rodzicielski najpóźniej do końca roku kalendarzowego, w którym dziecko kończy tyle lat.",
+        f"{KP}, art. 182¹ᶜ",
+    ),
+    p(
+        "parental_work_max_fraction",
+        0.5,
+        "Praca u pracodawcy udzielającego urlopu rodzicielskiego – najwyżej połowa pełnego wymiaru.",
+        f"{KP}, art. 182¹ᵉ § 1",
+    ),
+    p(
+        "parental_with_work_max_weeks",
+        {"single": 82, "multiple": 86, "za_zyciem_single": 130, "za_zyciem_multiple": 134},
+        "Urlop rodzicielski łączony z pracą wydłuża się proporcjonalnie, najdłużej do tylu tygodni.",
+        f"{KP}, art. 182¹ᶠ § 1 i § 1¹",
+    ),
+    # --- Urlop ojcowski ------------------------------------------------------------------------
+    p("paternity_leave_weeks", 2, "Wymiar urlopu ojcowskiego.", f"{KP}, art. 182³ § 1; {ZAL}"),
+    p(
+        "paternity_max_parts",
+        2,
+        "Urlop ojcowski jednorazowo albo najwyżej w tylu częściach.",
+        f"{KP}, art. 182³ § 1¹",
+    ),
+    p(
+        "paternity_min_part_weeks",
+        1,
+        "Najkrótsza część urlopu ojcowskiego.",
+        f"{KP}, art. 182³ § 1¹",
+    ),
+    p(
+        "paternity_deadline_months",
+        12,
+        "Urlop ojcowski do ukończenia przez dziecko 12 miesięcy (przysposobienie: 12 miesięcy od "
+        "uprawomocnienia się postanowienia, nie dłużej niż do 14 lat).",
+        f"{KP}, art. 182³ § 1",
+    ),
+    # --- Stawki --------------------------------------------------------------------------------
+    p(
+        "rate_maternity",
+        1.0,
+        "Zasiłek macierzyński za urlop macierzyński, na warunkach urlopu macierzyńskiego, uzupełniający i ojcowski.",
+        f"{UZ}, art. 31 ust. 1",
+    ),
+    p(
+        "rate_parental",
+        0.7,
+        "Zasiłek macierzyński za urlop rodzicielski.",
+        f"{UZ}, art. 31 ust. 2 i 3f",
+    ),
+    p(
+        "rate_averaged",
+        0.815,
+        "Stawka przy wniosku z art. 30a (cały urlop macierzyński i rodzicielski, poza 9 tygodniami drugiego rodzica).",
+        f"{UZ}, art. 31 ust. 3",
+    ),
+    p(
+        "averaged_application_deadline_days",
+        21,
+        "Wniosek o stawkę z art. 30a – najpóźniej tyle dni po porodzie (przyjęciu dziecka).",
+        f"{UZ}, art. 30a ust. 1–2",
+    ),
+    p("rate_sickness", 0.8, "Zasiłek chorobowy – stawka podstawowa.", f"{UZ}, art. 11 ust. 1"),
+    p(
+        "rate_sickness_pregnancy",
+        1.0,
+        "Zasiłek chorobowy i wynagrodzenie chorobowe w okresie ciąży.",
+        f"{UZ}, art. 11 ust. 2 pkt 1; {KP}, art. 92 § 1 pkt 2",
+    ),
+    p(
+        "rate_rehabilitation",
+        {"first_3_months": 0.9, "later": 0.75, "pregnancy": 1.0},
+        "Świadczenie rehabilitacyjne.",
+        f"{UZ}, art. 19 ust. 1",
+    ),
+    p("rate_care_allowance", 0.8, "Zasiłek opiekuńczy.", f"{PR}, rozdz. Zasiłek opiekuńczy"),
+    # --- Podstawa wymiaru ----------------------------------------------------------------------
+    p(
+        "social_contribution_deduction",
+        0.1371,
+        "Potrącenie składek na ubezpieczenia społeczne przy ustalaniu podstawy wymiaru zasiłku.",
+        f"{UZ}, art. 3 pkt 4, art. 45; {ZAL}",
+    ),
+    p(
+        "minimum_wage",
+        4806.0,
+        "Minimalne wynagrodzenie w 2026 r. (zł brutto).",
+        f"{ZAL}; {UZ}, art. 45",
+    ),
+    p(
+        "voluntary_sickness_base_max",
+        23550.0,
+        "Najwyższa miesięczna podstawa dobrowolnej składki chorobowej w 2026 r. (po potrąceniu 13,71%: 20 321,30 zł).",
+        f"{ZAL}; {PR} (250% prognozowanego przeciętnego wynagrodzenia)",
+    ),
+    p(
+        "benefit_daily_divisor",
+        30,
+        "Zasiłek za jeden dzień = 1/30 miesięcznej podstawy; za miesiąc uważa się 30 dni.",
+        f"{UZ}, art. 11 ust. 5, art. 36 ust. 3",
+    ),
+    p(
+        "parental_benefit_amount",
+        None,
+        "Kwota świadczenia rodzicielskiego, do której podwyższa się zasiłek macierzyński (art. 31 ust. 3a). "
+        "Żadne z sześciu źródeł nie podaje kwoty – wpisz ją, aby silnik pokazywał podwyższenie.",
+        f"{UZ}, art. 31 ust. 3a–3c (kwota: ustawa o świadczeniach rodzinnych)",
+    ),
+    # --- Uprawnienia i płatnik -----------------------------------------------------------------
+    p(
+        "payer_threshold_insured",
+        20,
+        "Płatnik składek zgłaszający więcej ubezpieczonych sam wypłaca zasiłki; pozostałym wypłaca ZUS.",
+        f"{UZ}, art. 61 ust. 1–2",
+    ),
+    p(
+        "contribution_debt_threshold_ratio",
+        0.01,
+        "Zadłużenie składkowe ponad tę część minimalnego wynagrodzenia wstrzymuje świadczenia do spłaty.",
+        f"{UZ}, art. 2a ust. 1",
+    ),
+    p(
+        "debt_repayment_window_months",
+        6,
+        "Brak spłaty zadłużenia w tym czasie od dnia powstania prawa = przedawnienie prawa do świadczenia.",
+        f"{UZ}, art. 2a ust. 2",
+    ),
+    p(
+        "debt_payment_days_after_repayment",
+        60,
+        "Po spłacie zadłużenia zasiłek wypłaca się najpóźniej w tym terminie.",
+        f"{UZ}, art. 64 ust. 3",
+    ),
+    p(
+        "gestation_months_for_contract_extension",
+        3,
+        "Umowa terminowa (> 1 miesiąca), która rozwiązałaby się po upływie tego miesiąca ciąży, przedłuża się do porodu.",
+        f"{KP}, art. 177 § 3",
+    ),
+    # --- Zasiłek chorobowy w ciąży --------------------------------------------------------------
+    p(
+        "sickness_waiting_days",
+        {"mandatory": 30, "voluntary": 90},
+        "Okres wyczekiwania na zasiłek chorobowy (ubezpieczenie obowiązkowe / dobrowolne).",
+        f"{UZ}, art. 4 ust. 1",
+    ),
+    p(
+        "sickness_employer_paid_days",
+        33,
+        "Dni niezdolności w roku, za które pracodawca płaci wynagrodzenie chorobowe.",
+        f"{KP}, art. 92 § 1; {ZAL}",
+    ),
+    p(
+        "employer_sickness_paid_days_over_50",
+        14,
+        "Jak wyżej, dla pracownika po roku, w którym ukończył 50 lat.",
+        f"{KP}, art. 92 § 1 i § 5; {ZAL}",
+    ),
+    p(
+        "sickness_benefit_period_days",
+        {"standard": 182, "pregnancy": 270, "after_insurance": 91},
+        "Okres zasiłkowy: zwykły, w ciąży, po ustaniu tytułu ubezpieczenia (nie dotyczy ciąży).",
+        f"{UZ}, art. 8 ust. 1–2; {ZAL}",
+    ),
+    p(
+        "sickness_break_days",
+        60,
+        "Przerwa między niezdolnościami, przy której okresy wlicza się do jednego okresu zasiłkowego "
+        "(nie dotyczy nowej niezdolności w ciąży).",
+        f"{UZ}, art. 9 ust. 2; {ZAL}",
+    ),
+    p(
+        "rehabilitation_max_months",
+        12,
+        "Świadczenie rehabilitacyjne – najdłużej.",
+        f"{UZ}, art. 18 ust. 2",
+    ),
+    # --- Terminy wniosków ----------------------------------------------------------------------
+    p(
+        "application_lead_days",
+        {
+            "maternity_before_birth": 14,
+            "father_maternity_part": 14,
+            "mother_resignation": 7,
+            "supplementary": 21,
+            "parental": 21,
+            "work_combination": 21,
+            "paternity": 7,
+            "taken_in_application": 7,
+            "taken_in_start_max": 21,
+        },
+        "Terminy wniosków pracownika (w dniach): przed rozpoczęciem urlopu, przed powrotem do pracy, "
+        "przed końcem urlopu macierzyńskiego (uzupełniający) albo od przyjęcia dziecka.",
+        f"{KP}, art. 177 § 1¹, 180 § 8–9, 180² § 4, 182¹ᵈ § 1, 182¹ᵉ § 2, 182³ § 2, 183 § 6; {PR}",
+    ),
+    p(
+        "claim_limitation_months",
+        6,
+        "Roszczenie o wypłatę zasiłku przedawnia się po tylu miesiącach od ostatniego dnia okresu.",
+        f"{UZ}, art. 67 ust. 1",
+    ),
+    p(
+        "payment_deadline_days",
+        30,
+        "Zasiłek wypłaca się najpóźniej w tym terminie od wyjaśnienia ostatniej okoliczności.",
+        f"{UZ}, art. 64 ust. 1",
+    ),
+    # --- Inne świadczenia (Poradnik) -----------------------------------------------------------
+    p(
+        "care_allowance_limits_days",
+        {"child_under_14": 60, "disabled_child_14_18": 30, "other": 14, "total_cap": 60},
+        "Zasiłek opiekuńczy – limity w roku kalendarzowym.",
+        f"{PR}, rozdz. Okres wypłaty zasiłku opiekuńczego",
+    ),
+    p(
+        "funeral_allowance_stillbirth",
+        7000.0,
+        "Zasiłek pogrzebowy, gdy dziecko urodzi się martwe (pełna kwota niezależnie od kosztów).",
+        f"{PR}, rozdz. Zasiłek pogrzebowy",
+    ),
+    p(
+        "funeral_application_months",
+        12,
+        "Wniosek o zasiłek pogrzebowy – w ciągu tylu miesięcy od pochówku.",
+        f"{PR}, rozdz. Zasiłek pogrzebowy",
     ),
 ]
 
@@ -372,7 +381,7 @@ HISTORICAL: list[dict] = [
             "minimum_wage",
             4666.00,
             "Minimalne wynagrodzenie za pracę w 2025 r. (zł brutto).",
-            f"{MIN_WAGE_REG} w 2025 r.",
+            "Rozporządzenie w sprawie minimalnego wynagrodzenia w 2025 r.",
         ),
         "valid_from": date(2025, 1, 1),
         "valid_to": date(2025, 12, 31),
@@ -382,4 +391,9 @@ HISTORICAL: list[dict] = [
 
 def all_rows() -> list[dict]:
     rows = [{**param, "valid_from": Y2026, "valid_to": None} for param in PARAMETERS]
-    return rows + HISTORICAL
+    return [{**row, **label_fields(row["key"])} for row in rows + HISTORICAL]
+
+
+def current_values() -> dict:
+    """key -> value of the 2026 parameters (for tests and the seed check)."""
+    return {row["key"]: row["value"] for row in PARAMETERS}

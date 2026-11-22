@@ -20,6 +20,9 @@ CITIZENS: dict[str, dict] = {
     "S10": {"first_name": "Alicja", "last_name": "Chojnacka", "pesel": "90082312345"},
     "S11": {"first_name": "Dorota", "last_name": "Byczek", "pesel": "87061712345"},
     "S12": {"first_name": "Weronika", "last_name": "Lubaś", "pesel": "93110912345"},
+    "S13": {"first_name": "Tomasz", "last_name": "Grzelak", "pesel": "88030412345"},
+    "S14": {"first_name": "Magdalena", "last_name": "Lipińska", "pesel": "86072012345"},
+    "S15": {"first_name": "Paulina", "last_name": "Leszczyńska", "pesel": "92121212345"},
 }
 
 TITLES = {
@@ -55,10 +58,11 @@ def event_date(profile: dict) -> date:
 
 
 def parent_data(profile: dict) -> tuple[str, dict]:
-    """The parent the citizen represents: the mother when there is one."""
-    if profile.get("mother"):
-        return "mother", profile["mother"]
-    return "father", profile["father"]
+    """The parent the citizen represents: the mother, unless only the father has an insurance title."""
+    mother, father = profile.get("mother"), profile.get("father")
+    if mother and (mother.get("employment") != "unemployed" or not father):
+        return "mother", mother
+    return "father", father
 
 
 def insurance_record(profile: dict) -> dict:
@@ -164,14 +168,26 @@ def ezla_records(profile: dict) -> list[dict]:
 
 
 PUE_ANSWERS = [
-    (("ubezpiecz", "tytuł"), "Dane o ubezpieczeniu widzisz w zakładce „Ubezpieczenie”. Jeśli coś się nie zgadza, "
-     "zgłoś to płatnikowi składek – to on przekazuje zgłoszenia do ZUS."),
-    (("zadłuż", "składk", "niedopłat"), "Stan zadłużenia na dzień powstania prawa do zasiłku pokazuje "
-     "zaświadczenie w zakładce „Zadłużenie”. Zaległość powyżej 1% płacy minimalnej wstrzymuje wypłatę zasiłku."),
-    (("termin", "kiedy", "wniosek"), "Wniosek o zasiłek macierzyński złóż najpóźniej w terminie pokazanym na "
-     "osi czasu. Roszczenie o wypłatę przedawnia się po 6 miesiącach od ostatniego dnia okresu zasiłku."),
-    (("zla", "zwolnien", "chorob"), "Zaświadczenia e-ZLA trafiają do ZUS automatycznie. Ich listę sprawdzisz "
-     "w zakładce „e-ZLA”."),
+    (
+        ("ubezpiecz", "tytuł"),
+        "Dane o ubezpieczeniu widzisz w zakładce „Ubezpieczenie”. Jeśli coś się nie zgadza, "
+        "zgłoś to płatnikowi składek – to on przekazuje zgłoszenia do ZUS.",
+    ),
+    (
+        ("zadłuż", "składk", "niedopłat"),
+        "Stan zadłużenia na dzień powstania prawa do zasiłku pokazuje "
+        "zaświadczenie w zakładce „Zadłużenie”. Zaległość powyżej 1% płacy minimalnej wstrzymuje wypłatę zasiłku.",
+    ),
+    (
+        ("termin", "kiedy", "wniosek"),
+        "Wniosek o zasiłek macierzyński złóż najpóźniej w terminie pokazanym na "
+        "osi czasu. Roszczenie o wypłatę przedawnia się po 6 miesiącach od ostatniego dnia okresu zasiłku.",
+    ),
+    (
+        ("zla", "zwolnien", "chorob"),
+        "Zaświadczenia e-ZLA trafiają do ZUS automatycznie. Ich listę sprawdzisz "
+        "w zakładce „e-ZLA”.",
+    ),
 ]
 
 
@@ -180,5 +196,7 @@ def pue_answer(text: str) -> str:
     for keywords, answer in PUE_ANSWERS:
         if any(k in lowered for k in keywords):
             return answer
-    return ("Dziękujemy za wiadomość. Konsultant PUE odpowie w ciągu 3 dni roboczych. "
-            "To symulacja – pytanie nie zostało wysłane do ZUS.")
+    return (
+        "Dziękujemy za wiadomość. Konsultant PUE odpowie w ciągu 3 dni roboczych. "
+        "To symulacja – pytanie nie zostało wysłane do ZUS."
+    )

@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 // shadcn/ui Badge.
 const badgeVariants = cva(
-  "inline-flex w-fit items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+  "inline-flex w-fit items-center gap-1 rounded-sm border px-2 py-0.5 text-xs font-bold whitespace-nowrap",
   {
     variants: {
       variant: {

@@ -1,0 +1,27 @@
+{
+  "id": "S15",
+  "title_pl": "Mama w szpitalu po porodzie",
+  "description_pl": "Po 8 tygodniach urlopu macierzyńskiego mama trafia do szpitala – na czas pobytu urlop wykorzystuje tata, potem mama go kończy.",
+  "tags": [
+    "szpital",
+    "tata"
+  ],
+  "profile": {
+    "child": {
+      "birth_date": "2026-09-01"
+    },
+    "mother_cannot_care": "hospital",
+    "mother_situation_from": "2026-11-02",
+    "mother_situation_to": "2026-11-20",
+    "mother": {
+      "employment": "employee",
+      "average_monthly_base": 6300,
+      "employer_insured_count": 50
+    },
+    "father": {
+      "employment": "employee",
+      "average_monthly_base": 6900,
+      "employer_insured_count": 50
+    }
+  }
+}

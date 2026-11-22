@@ -8,11 +8,9 @@
  *   `make check-routes` fails when they differ.
  */
 export const PUBLIC_PATHS = {
-  wizard: "/kreator",
   calculator: "/kalkulator",
   timeline: "/os-czasu",
   applications: "/wnioski",
-  examples: "/przyklady",
   zus: "/dane-zus",
   help: "/pomoc",
   login: "/logowanie",

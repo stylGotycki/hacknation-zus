@@ -3,7 +3,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.applications import STATUS_FLOW, STATUS_NOTE_PL, _now, _out
 from app.api.parameters import ParameterOut
@@ -16,7 +16,7 @@ from app.seed.parameters_2026 import all_rows
 
 def require_admin(x_admin_token: Annotated[str | None, Header()] = None) -> None:
     if x_admin_token != get_settings().admin_token:
-        raise HTTPException(401, "Invalid admin token")
+        raise HTTPException(401, "Nieprawidłowe hasło administratora")
 
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -56,13 +56,27 @@ def all_versions(db: DbSession) -> list[ParameterRow]:
 
 class VersionIn(BaseModel):
     value: Any
-    valid_from: date
-    description_pl: str | None = None
+    # Defaults to today: the change applies to applications submitted from now on. A later date
+    # can be set for a law that enters into force in the future. Never in the past.
+    valid_from: date | None = None
     legal_basis: str | None = None
 
 
+class VersionOut(BaseModel):
+    parameter: ParameterOut
+    # Applications already submitted: they keep the parameters stored at submission.
+    applications_kept: int
+
+
 def same_shape(old: Any, new: Any) -> bool:
-    """A new value must keep the type of the old one (and the keys of a table)."""
+    """A new value must keep the type of the old one (and the keys of a table).
+
+    An empty value (null) can be set or replaced by a number – e.g. an amount not yet published.
+    """
+    if old is None:
+        return new is None or (isinstance(new, int | float) and not isinstance(new, bool))
+    if new is None:
+        return False
     if isinstance(old, bool) or isinstance(new, bool):
         return isinstance(old, bool) and isinstance(new, bool)
     if isinstance(old, int | float):
@@ -78,9 +92,18 @@ def same_shape(old: Any, new: Any) -> bool:
     return type(old) is type(new)
 
 
-@router.post("/parameters/{key}/versions", response_model=ParameterOut, status_code=201)
-def add_version(key: str, body: VersionIn, db: DbSession) -> LegalParameter:
-    """Adds a new version valid from a later date; the previous version ends the day before."""
+@router.post("/parameters/{key}/versions", response_model=VersionOut, status_code=201)
+def add_version(key: str, body: VersionIn, db: DbSession) -> VersionOut:
+    """Changes a parameter for new applications.
+
+    A new version starts today (or on a later date); the previous one ends the day before.
+    A second change on the same day overwrites the admin's version from that day. Submitted
+    applications are not affected: they carry the parameters valid when they were submitted.
+    """
+    today = date.today()
+    valid_from = body.valid_from or today
+    if valid_from < today:
+        raise HTTPException(422, "Zmiana nie może obowiązywać wstecz – dotyczy nowych wniosków")
     versions = list(
         db.scalars(
             select(LegalParameter)
@@ -89,41 +112,53 @@ def add_version(key: str, body: VersionIn, db: DbSession) -> LegalParameter:
         )
     )
     if not versions:
-        raise HTTPException(404, f"Unknown parameter: {key}")
+        raise HTTPException(404, f"Nie ma parametru „{key}”")
     latest = versions[0]
-    if body.valid_from <= latest.valid_from:
+    if not same_shape(latest.value, body.value):
+        raise HTTPException(422, "Nowa wartość musi mieć ten sam typ i te same pola co obecna")
+    seed_versions = {(r["key"], r["valid_from"]) for r in all_rows()}
+    if latest.valid_from == valid_from and (key, valid_from) not in seed_versions:
+        latest.value = body.value
+        if body.legal_basis:
+            latest.legal_basis = body.legal_basis
+        row = latest
+    elif valid_from <= latest.valid_from:
         raise HTTPException(
             409,
-            f"The new version must start after {latest.valid_from} (the latest existing version)",
+            f"Nowa wersja musi zaczynać się po {latest.valid_from} (ostatnia istniejąca wersja)",
         )
-    if not same_shape(latest.value, body.value):
-        raise HTTPException(422, "The new value must have the same type and keys as the current one")
-    latest.valid_to = body.valid_from - timedelta(days=1)
-    new = LegalParameter(
-        key=key,
-        value=body.value,
-        valid_from=body.valid_from,
-        valid_to=None,
-        description_pl=body.description_pl or latest.description_pl,
-        legal_basis=body.legal_basis or latest.legal_basis,
-    )
-    db.add(new)
+    else:
+        latest.valid_to = valid_from - timedelta(days=1)
+        row = LegalParameter(
+            key=key,
+            value=body.value,
+            valid_from=valid_from,
+            valid_to=None,
+            description_pl=latest.description_pl,
+            legal_basis=body.legal_basis or latest.legal_basis,
+            label_pl=latest.label_pl,
+            group_pl=latest.group_pl,
+            unit=latest.unit,
+            value_labels=latest.value_labels,
+        )
+        db.add(row)
     db.commit()
-    return new
+    kept = db.scalar(select(func.count()).select_from(Application)) or 0
+    return VersionOut(parameter=ParameterOut.model_validate(row), applications_kept=kept)
 
 
 @router.delete("/parameters/{key}/versions/{valid_from}", status_code=204)
 def delete_version(key: str, valid_from: date, db: DbSession) -> None:
     """Removes an admin-made version and reopens the previous one. Seed versions stay."""
     if (key, valid_from) in {(r["key"], r["valid_from"]) for r in all_rows()}:
-        raise HTTPException(409, "Versions from the seed cannot be deleted")
+        raise HTTPException(409, "Wersji bazowych (ze źródeł) nie można usunąć")
     row = db.scalar(
         select(LegalParameter).where(
             LegalParameter.key == key, LegalParameter.valid_from == valid_from
         )
     )
     if row is None:
-        raise HTTPException(404, "Version not found")
+        raise HTTPException(404, "Nie ma takiej wersji")
     previous = db.scalar(
         select(LegalParameter)
         .where(LegalParameter.key == key, LegalParameter.valid_from < valid_from)
@@ -147,6 +182,7 @@ class AdminApplication(BaseModel):
     submitted_to: str | None
     created_at: str | None
     last_note: str | None
+    params_count: int
 
 
 @router.get("/applications", response_model=list[AdminApplication])
@@ -169,6 +205,7 @@ def all_applications(db: DbSession) -> list[AdminApplication]:
                 submitted_to=app.submitted_to,
                 created_at=record.created_at.isoformat() if record.created_at else None,
                 last_note=record.history[-1].note if record.history else None,
+                params_count=record.params_count,
             )
         )
     return out
@@ -183,10 +220,10 @@ class StatusIn(BaseModel):
 def set_status(application_id: int, body: StatusIn, db: DbSession) -> dict[str, str]:
     """The payer's decision: moves an application to any stage of the flow, with a note."""
     if body.status not in STATUS_FLOW:
-        raise HTTPException(422, f"Status must be one of: {', '.join(STATUS_FLOW)}")
+        raise HTTPException(422, f"Status musi być jednym z: {', '.join(STATUS_FLOW)}")
     app = db.get(Application, application_id)
     if app is None:
-        raise HTTPException(404, "Application not found")
+        raise HTTPException(404, "Nie ma takiego wniosku")
     app.status = body.status
     app.history = [
         *app.history,

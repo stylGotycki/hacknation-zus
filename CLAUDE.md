@@ -7,14 +7,16 @@
 - **Only user-facing content is Polish**: UI labels and copy, `description_pl` values in the seed,
   legal citations in `legal_basis`, form texts, scenario descriptions, README and other docs.
 - Rule of thumb: if a user could read it on screen, it is Polish; if only a developer reads it, English.
-- Next.js routes and folders are English (`/wizard`, `/calculator`, ...). The public URLs users
-  see are Polish (`/kreator`, `/kalkulator`, ...) and are the only Polish identifiers allowed.
+- Next.js routes and folders are English (`/calculator`, `/timeline`, ...). The public URLs users
+  see are Polish (`/kalkulator`, `/os-czasu`, ...) and are the only Polish identifiers allowed.
   nginx translates them (see "Routes" below). API paths (`/api/...`) stay English.
 
 ## Rules
 - Never hardcode legal numbers (weeks, rates, thresholds). Read them from `legal_parameter`
   via `parameters_valid_on(db, date)`; add new ones to `backend/app/seed/parameters_2026.py`.
-- `backend/app/rules/` stays pure: no FastAPI, no SQLAlchemy – input profile + params, output result.
+- Legal rules are DATA, not code: table `rule`, seed `backend/app/seed/rules_2026.py`, built only from the six
+  sources (KP, UZ, RZ, RW, Poradnik ZUS 2026, załącznik). Every rule has `legal_basis` and `source`.
+  `backend/app/engine/` (expressions, facts, runtime) stays generic: no legal logic, no FastAPI.
 - No migrations: schema = SQLAlchemy models + `create_all`. After changing a model run `make reset-db`.
 - New API router: create `backend/app/api/<name>.py`, register it in `backend/app/api/__init__.py`.
   Endpoints take `db: DbSession`. Paths are relative; everything is mounted under `/api`.
@@ -30,9 +32,24 @@
 - UI components: shadcn/ui in `frontend/src/components/ui` (`npx shadcn add <name>`).
 - Mobile first: every screen must work at 390 px width.
 - Before finishing a task: `make test` passes and `npm run build` (in `frontend/`) succeeds.
-- Rules engine (E1): entry point `app.rules.evaluate(profile, params)`; the API wrapper is
-  `backend/app/api/rules.py`. A new rule = a parameter in the seed + code in the matching module of
-  `backend/app/rules/` + a test in `app/tests/test_rules.py`. `PlanError` means the user's plan breaks
-  a legal limit (HTTP 422); `MissingParameterError` means a parameter is missing (HTTP 409).
-- Frontend types for the engine live in `frontend/src/lib/api.ts` (`FamilyProfile`, `EvaluationResult`);
+- Rules engine (E1): `app.engine.service.evaluate_profile(profile, rules, params, today)`; API wrapper
+  `backend/app/api/rules.py`, admin API `backend/app/api/admin_rules.py`. A new rule = an entry in
+  `rules_2026.py` (or in the admin panel) + a test in `app/tests/test_rules.py`; a new fact = `facts.py`
+  (`build_facts` + `FACT_FIELDS`). A `walidacja` rule raises `PlanViolation` (HTTP 422).
+  After editing the seed run `python scripts/gen_rules_doc.py` and keep `docs/maszyna-stanow.md` in sync.
+- Frontend types for the engine live in `frontend/src/lib/api.ts` (`FamilyProfile`, `EvaluationResult`, `AdminRule`);
   keep them in sync with `backend/app/rules/models.py`.
+- Routes may live in a route group: the guide pages are in `frontend/src/app/(guide)/` (layout with header, side menu,
+  footer); `/admin` has its own plain layout.
+
+## UI (zus.pl look)
+- Every page starts with `<PageHeading title icon>` from `components/zus/page-heading.tsx`; the frame (header,
+  breadcrumbs, side menu, footer) comes from `app/(guide)/layout.tsx` – pages render only their content.
+- Use theme tokens (`text-link`, `bg-primary`, `border-navy`, `bg-orange`, `text-icon`, `bg-muted`, `border-border`);
+  no raw hex in components, no shadows, square corners (`rounded-sm`), bold Lato for labels and buttons.
+- The guide is a standalone app in the zus.pl style: no zus.pl main menu. The side menu, mobile menu and search read
+  `NAV_ITEMS` (`sideLabel` overrides the label); shared frame constants live in `lib/zus-site.ts`.
+- Admin texts come from the database (`label_pl`, `group_pl`, `unit`, `value_labels` of `legal_parameter`); a new
+  parameter needs an entry in `backend/app/seed/parameter_labels.py` (a test checks it).
+- Parameter changes apply to new applications: a submitted application stores `params_snapshot`.
+- Never add fields that collect real credentials; keep the "wersja demonstracyjna" banner.

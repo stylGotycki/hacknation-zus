@@ -20,7 +20,7 @@ def test_evaluate_endpoint_returns_full_result(client):
     data = response.json()
     assert data["params_date"] == "2026-11-21"
     codes = {b["code"] for b in data["benefits"]}
-    assert {"maternity_allowance_mother", "parental_allowance_mother"} <= codes
+    assert {"macierzynski_mama", "rodzicielski_mama"} <= codes
     assert data["timeline"][0]["kind"] == "maternity"
     assert data["totals"]["family_gross"] > 0
 
@@ -35,7 +35,7 @@ def test_evaluate_rejects_invalid_plan_with_422(client):
     body = _payload(plan={"maternity_before_birth_weeks": 9})
     response = client.post("/api/rules/evaluate", params={"date": "2026-11-21"}, json=body)
     assert response.status_code == 422
-    assert "6 weeks" in response.json()["detail"]
+    assert "6 tygodni" in response.json()["detail"]
 
 
 def test_evaluate_rejects_profile_without_parent_or_date(client):
@@ -51,7 +51,7 @@ def test_evaluate_uses_parameters_valid_on_the_given_date(client):
     # In mid-2025 only the historical minimum wage exists, so the engine reports it clearly.
     response = client.post("/api/rules/evaluate", params={"date": "2025-06-01"}, json=_payload())
     assert response.status_code == 409
-    assert "not valid on 2025-06-01" in response.json()["detail"]
+    assert "2025-06-01" in response.json()["detail"]
 
 
 def test_openapi_documents_rules_endpoint(client):
@@ -61,8 +61,9 @@ def test_openapi_documents_rules_endpoint(client):
 
 def test_scenarios_list_and_every_scenario_evaluates(client):
     scenarios = client.get("/api/scenarios").json()
-    assert [s["id"] for s in scenarios] == [f"S{i}" for i in range(1, 13)]
+    assert [s["id"] for s in scenarios] == [f"S{i}" for i in range(1, 16)]
     for scenario in scenarios:
         response = client.post("/api/rules/evaluate?date=2026-11-21", json=scenario["profile"])
         assert response.status_code == 200, (scenario["id"], response.text)
         assert response.json()["benefits"], scenario["id"]
+        assert not response.json()["rule_errors"], (scenario["id"], response.json()["rule_errors"])

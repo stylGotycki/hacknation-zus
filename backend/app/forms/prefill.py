@@ -9,7 +9,14 @@ from app.rules.models import EvaluationResult, LeavePeriod
 
 Person = Literal["mother", "father"]
 
-LEAVE_FORM = {"maternity": "leave_maternity", "parental": "leave_parental", "paternity": "leave_paternity"}
+LEAVE_FORM = {
+    "maternity": "leave_maternity",
+    "parental": "leave_parental",
+    "paternity": "leave_paternity",
+}
+# Benefit (rule) codes of the deadlines that belong to each leave form.
+BENEFIT_PREFIX = {"maternity": "macierzynski", "parental": "rodzicielski", "paternity": "ojcowski"}
+LEAVE_KINDS = ("maternity", "supplementary", "parental", "paternity")
 
 
 class Suggestion(BaseModel):
@@ -26,9 +33,17 @@ def _is_employee(profile_person: dict | None) -> bool:
     return bool(profile_person) and profile_person.get("employment") == "employee"
 
 
-def _deadline_for(result: EvaluationResult, person: str, kind: str) -> tuple[date | None, int | None]:
+def _deadline_for(
+    result: EvaluationResult, person: str, kind: str
+) -> tuple[date | None, int | None]:
     for d in result.deadlines:
-        if d.person == person and d.kind == "apply" and d.benefit_code and d.benefit_code.startswith(kind):
+        if (
+            d.person == person
+            and d.kind == "apply"
+            and d.benefit_code
+            and d.benefit_code.startswith(BENEFIT_PREFIX[kind])
+            and d.days_left >= 0
+        ):
             return d.due, d.days_left
     return None, None
 
@@ -38,7 +53,8 @@ def suggest(result: EvaluationResult, profile: dict) -> list[Suggestion]:
     out: list[Suggestion] = []
     for person in ("mother", "father"):
         periods = sorted(
-            (p for p in result.timeline if p.person == person and p.paid), key=lambda p: p.start
+            (p for p in result.timeline if p.person == person and p.paid and p.kind in LEAVE_KINDS),
+            key=lambda p: p.start,
         )
         if not periods:
             continue

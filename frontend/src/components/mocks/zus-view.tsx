@@ -279,7 +279,7 @@ export function ZusView() {
                   </Field>
                   <Field label="Treść pytania">
                     <textarea
-                      className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                      className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                       value={text}
                       onChange={(e) => setText(e.target.value)}
                       required

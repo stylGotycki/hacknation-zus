@@ -6,7 +6,6 @@ import {
   type LucideIcon,
   Settings,
   ShieldCheck,
-  Sparkles,
   Users,
 } from "lucide-react";
 
@@ -18,27 +17,25 @@ export type NavItem = {
   /** Public URL (Polish) – what <Link> uses. */
   href: string;
   label: string;
+  /** Label in the zus.pl side menu and breadcrumb (falls back to `label`). */
+  sideLabel?: string;
   description: string;
   icon: LucideIcon;
   /** Backlog epic that fills this page – shown on placeholders. */
   epic: string;
 };
 
+/** Items shown in the citizen side menu (admin lives in the footer). */
+export const sideNavItems = () => NAV_ITEMS.filter((item) => item.route !== "admin");
+
 /** Single source of truth for navigation: header, mobile menu and home page tiles. */
 export const NAV_ITEMS: NavItem[] = [
   {
-    route: "wizard",
-    href: PUBLIC_PATHS.wizard,
-    label: "Sprawdź uprawnienia",
-    description: "Odpowiedz na kilka pytań i zobacz, jakie świadczenia Ci przysługują.",
-    icon: Sparkles,
-    epic: "E4",
-  },
-  {
     route: "calculator",
     href: PUBLIC_PATHS.calculator,
-    label: "Kalkulator",
-    description: "Policz wysokość zasiłku macierzyńskiego i długość urlopów.",
+    label: "Sprawdź uprawnienia",
+    sideLabel: "Sprawdź uprawnienia i policz zasiłek",
+    description: "Odpowiedz krok po kroku na pytania o dziecko, rodzinę i pracę – zobacz świadczenia, kwoty, urlopy i terminy.",
     icon: Calculator,
     epic: "E2",
   },
@@ -46,6 +43,7 @@ export const NAV_ITEMS: NavItem[] = [
     route: "timeline",
     href: PUBLIC_PATHS.timeline,
     label: "Oś czasu",
+    sideLabel: "Plan urlopów – oś czasu",
     description: "Zobacz plan urlopów mamy i taty na jednej osi.",
     icon: GitBranch,
     epic: "E5",
@@ -57,14 +55,6 @@ export const NAV_ITEMS: NavItem[] = [
     description: "Wypełnij wnioski krok po kroku i wróć do zapisanych wersji roboczych.",
     icon: FileText,
     epic: "E6",
-  },
-  {
-    route: "examples",
-    href: PUBLIC_PATHS.examples,
-    label: "Przykłady",
-    description: "Prawdziwe sytuacje rodzin na podstawie spraw ZUS.",
-    icon: Users,
-    epic: "E3",
   },
   {
     route: "zus",
@@ -86,6 +76,7 @@ export const NAV_ITEMS: NavItem[] = [
     route: "admin",
     href: PUBLIC_PATHS.admin,
     label: "Admin",
+    sideLabel: "Panel administratora",
     description: "Parametry prawne i obieg wniosków.",
     icon: Settings,
     epic: "E8",

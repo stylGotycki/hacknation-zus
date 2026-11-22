@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from app.api.parameters import parameters_valid_on
 from app.core.db import DbSession
 from app.mocks import data
-from app.rules import FamilyProfile, MissingParameterError, Params
+from app.rules import FamilyProfile
 from app.seed.scenarios import load_scenarios
 
 router = APIRouter(prefix="/mock", tags=["mocks"])
@@ -63,14 +63,11 @@ def debt_certificate(citizen_id: str, db: DbSession) -> dict[str, Any]:
     """Simulated certificate of contribution debt on the day the benefit right arises."""
     profile = _scenario(citizen_id)["profile"]
     on = data.event_date(profile)
-    try:
-        params = Params.from_rows(parameters_valid_on(db, on), on)
-        ratio, wage = params.number("contribution_debt_threshold_ratio"), params.number("minimum_wage")
-    except MissingParameterError:
+    values = {p.key: p.value for p in parameters_valid_on(db, on)}
+    if "minimum_wage" not in values or "contribution_debt_threshold_ratio" not in values:
         # Cases from earlier years: the law of the day is not in the seed, use today's parameters.
-        today = date.today()
-        params = Params.from_rows(parameters_valid_on(db, today), today)
-        ratio, wage = params.number("contribution_debt_threshold_ratio"), params.number("minimum_wage")
+        values = {p.key: p.value for p in parameters_valid_on(db, date.today())}
+    ratio, wage = float(values["contribution_debt_threshold_ratio"]), float(values["minimum_wage"])
     threshold = round(ratio * wage, 2)
     return {**data.debt_certificate(profile, threshold), "note_pl": SIMULATION_NOTE}
 
@@ -78,7 +75,10 @@ def debt_certificate(citizen_id: str, db: DbSession) -> dict[str, Any]:
 @router.get("/zus/{citizen_id}/ezla")
 def ezla(citizen_id: str) -> dict[str, Any]:
     """Simulated preview of e-ZLA sick notes issued for the citizen."""
-    return {"records": data.ezla_records(_scenario(citizen_id)["profile"]), "note_pl": SIMULATION_NOTE}
+    return {
+        "records": data.ezla_records(_scenario(citizen_id)["profile"]),
+        "note_pl": SIMULATION_NOTE,
+    }
 
 
 @router.get("/zus/{citizen_id}/profile", response_model=FamilyProfile)

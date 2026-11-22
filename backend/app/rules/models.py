@@ -24,7 +24,7 @@ class Situation(StrEnum):
 
 class EmploymentType(StrEnum):
     EMPLOYEE = "employee"  # umowa o pracę
-    CONTRACT = "contract"  # umowa zlecenie
+    CONTRACT = "contract"  # umowa zlecenie / agencyjna
     SELF_EMPLOYED = "self_employed"  # działalność gospodarcza
     COOPERATING = "cooperating"  # osoba współpracująca
     UNEMPLOYED = "unemployed"
@@ -44,60 +44,49 @@ class JobLossReason(StrEnum):
 
 
 class MotherCannotCare(StrEnum):
-    HOSPITAL = "hospital"
-    DISABLED = "disabled"  # unable to live independently
+    HOSPITAL = "hospital"  # mother in hospital (after 8 weeks of maternity allowance)
+    DISABLED = "disabled"  # unable to live independently (orzeczenie)
     DEATH = "death"
     ABANDONED = "abandoned"
+    EMPLOYED = "employed"  # mother without sickness insurance title took a job ≥ half-time
 
 
 class ParentProfile(BaseModel):
     employment: EmploymentType
     # None = derive from `employment` (employees are insured by law, others only voluntarily).
     sickness_insurance: InsuranceKind | None = None
-    # Days of uninterrupted sickness insurance at the planned start of sick leave.
-    insured_days: int | None = Field(default=None, ge=0)
+    insured_days: int | None = Field(default=None, ge=0)  # days of uninterrupted insurance
     insurance_ended_on: date | None = None
     job_loss_reason: JobLossReason | None = None
     # Average monthly GROSS base of the last 12 months (salary, or base of sickness contribution).
     average_monthly_base: float | None = Field(default=None, ge=0)
+    monthly_bases: list[float] | None = None  # up to 12 full months, any order
     working_time_fraction: float = Field(default=1.0, gt=0, le=1)
-    fixed_term_contract: bool = False
+    fixed_term_contract: bool = False  # extended to the birth (art. 177 § 3 KP)
     employer_insured_count: int | None = Field(default=None, ge=0)
-    # Contribution debt (self-employed, cooperating persons, "ulga na start").
-    start_relief: bool = False
+    start_relief: bool = False  # "ulga na start" – no social insurance
     contribution_debt: float = Field(default=0, ge=0)
     debt_paid_on: date | None = None
-    debt_in_installments: bool = False  # installment plan paid on time = no debt
-    base_raised_in_pregnancy: bool = False
-    # Share of full-time work kept while on parental leave (0 – 0.5, same employer only).
-    planned_work_fraction: float = Field(default=0, ge=0, le=1)
-    on_pregnancy_sick_leave: bool = False  # e-ZLA with code B
-    # Pregnancy sick leave (e-ZLA code B): dates and what was already used this year.
-    sick_leave_start: date | None = None
+    planned_work_fraction: float = Field(default=0, ge=0, le=1)  # work during parental leave
+    sick_leave_start: date | None = None  # e-ZLA with code B
     sick_leave_end: date | None = None
-    sick_days_used_this_year: int = Field(default=0, ge=0)  # days already paid by the employer
-    # Employee who turned 50 before the sick leave year: employer pays 14 days, not 33.
+    sick_days_used_this_year: int = Field(default=0, ge=0)
     age_over_50: bool = False
-    # Gross monthly base of up to the last 12 months (most recent first or any order).
-    monthly_bases: list[float] | None = None
-    # Exceptions that keep the right to maternity allowance.
-    on_childcare_leave: bool = False  # birth during urlop wychowawczy
-    # Fixed-term contract that ended after the 3rd month of pregnancy (extended to the birth).
-    fixed_term_contract: bool = False
+    on_childcare_leave: bool = False  # urlop wychowawczy on the day of birth
 
     @model_validator(mode="after")
-    def _check_sick_leave(self) -> "ParentProfile":
-        if self.sick_leave_start and self.sick_leave_end and self.sick_leave_end < self.sick_leave_start:
+    def _check(self) -> "ParentProfile":
+        if (
+            self.sick_leave_start
+            and self.sick_leave_end
+            and self.sick_leave_end < self.sick_leave_start
+        ):
             raise ValueError("sick_leave_end must not be before sick_leave_start")
         if self.monthly_bases is not None:
             if len(self.monthly_bases) > 12:
                 raise ValueError("monthly_bases accepts at most 12 months")
             if any(v < 0 for v in self.monthly_bases):
                 raise ValueError("monthly_bases must not contain negative values")
-        return self
-
-    @model_validator(mode="after")
-    def _derive_insurance(self) -> "ParentProfile":
         if self.sickness_insurance is None:
             self.sickness_insurance = (
                 InsuranceKind.MANDATORY
@@ -110,17 +99,17 @@ class ParentProfile(BaseModel):
 class ChildProfile(BaseModel):
     situation: Situation = Situation.BIRTH
     birth_date: date | None = None  # actual date of birth
-    due_date: date | None = None  # expected date of birth (used while birth_date is unknown)
+    due_date: date | None = None  # expected date of birth (only while not born)
     placement_date: date | None = None  # adoption / foster: date the child was taken in
     children_count: int = Field(default=1, ge=1, le=10)
     za_zyciem: bool = False
-    stillborn: bool = False
-    died_on: date | None = None
+    stillborn: bool = False  # only after the birth
+    died_on: date | None = None  # only after the birth
     children_surviving: int | None = Field(default=None, ge=0)
     gestation_weeks: int | None = Field(default=None, ge=20, le=45)
     birth_weight_g: int | None = Field(default=None, ge=200, le=8000)
-    hospital_days: int = Field(default=0, ge=0)  # stay from day 5 up to week 8 / 15
-    hospital_first_day: int | None = Field(default=None, ge=1)  # day after birth stay began
+    hospital_days: int = Field(default=0, ge=0)  # days in hospital counted for supplementary leave
+    hospital_first_day: int | None = Field(default=None, ge=1)  # day after birth the stay began
     age_years: float | None = Field(default=None, ge=0, le=18)  # adoption / foster
     school_deferred: bool = False
 
@@ -135,45 +124,22 @@ class ChildProfile(BaseModel):
         return self.situation == Situation.BIRTH and self.birth_date is not None
 
 
-class CareSituation(StrEnum):
-    SICK_CHILD = "sick_child"  # ill child (limit by age)
-    HEALTHY_CHILD = "healthy_child"  # healthy child under 8 (closed nursery, nanny ill, ...)
-    FAMILY_MEMBER = "family_member"  # other ill family member
-
-
-class CareProfile(BaseModel):
-    """A planned period of care (zasiłek opiekuńczy). Omit it to get general information only."""
-
-    situation: CareSituation = CareSituation.SICK_CHILD
-    child_age_years: float = Field(default=1, ge=0, le=18)
-    child_disabled: bool = False
-    other_household_member_available: bool = False
-    days_planned: int = Field(default=7, ge=1, le=366)
-    days_used_this_year: int = Field(default=0, ge=0)  # already paid to this family this year
-    days_used_for_family_members: int = Field(default=0, ge=0)  # part of the above
-
-
-class ParentalBlock(BaseModel):
-    person: Literal["mother", "father"]
-    weeks: float = Field(gt=0)
-    start: date | None = None  # None = right after the previous block
-
-
 class Plan(BaseModel):
-    """Choices the parents can make. Defaults give a sensible plan."""
+    """Choices the parents can make. Defaults give the plan the law assumes."""
 
     maternity_before_birth_weeks: int = Field(default=0, ge=0)
     maternity_weeks_to_father: int = Field(default=0, ge=0)
-    parental_weeks_father: int | None = Field(default=None, ge=0)  # None = reserved minimum
+    parental_weeks_father: int | None = Field(default=None, ge=0)  # None = his 9 weeks
+    parental_father_start: date | None = None  # None = right after the mother
+    parental_mother_start: date | None = None  # None = right after the maternity leave
     parental_parts_mother: int = Field(default=1, ge=1)
     parental_parts_father: int = Field(default=1, ge=1)
+    paternity_start: date | None = None
     paternity_parts: int = Field(default=1, ge=1)
     use_supplementary_leave: bool = True
     supplementary_taken_by: Literal["mother", "father"] = "mother"
-    # Explicit split of the parental leave into parts (overrides parental_weeks_father).
-    parental_blocks: list[ParentalBlock] | None = None
-    # Start date of each part of the paternity leave (default: birth, then 4 weeks later).
-    paternity_starts: list[date] | None = None
+    averaged_rate: bool = False  # application for 81.5% (within 21 days)
+    averaged_rate_applied_on: date | None = None
 
 
 class FamilyProfile(BaseModel):
@@ -181,10 +147,9 @@ class FamilyProfile(BaseModel):
     mother: ParentProfile | None = None
     father: ParentProfile | None = None
     mother_cannot_care: MotherCannotCare | None = None
-    # Date the mother files (or filed) the application for the averaged 81.5% rate.
-    averaged_rate_applied_on: date | None = None
+    mother_situation_from: date | None = None
+    mother_situation_to: date | None = None
     plan: Plan = Field(default_factory=Plan)
-    care: CareProfile | None = None
 
     @model_validator(mode="after")
     def _validate(self) -> "FamilyProfile":
@@ -221,7 +186,14 @@ class CalculationBase(BaseModel):
 class LeavePeriod(BaseModel):
     id: str
     person: Person
-    kind: Literal["pregnancy_sickness", "maternity", "supplementary", "parental", "paternity"]
+    kind: Literal[
+        "pregnancy_sickness",
+        "maternity_equivalent",
+        "maternity",
+        "supplementary",
+        "parental",
+        "paternity",
+    ]
     label_pl: str
     start: date
     end: date
@@ -233,6 +205,8 @@ class LeavePeriod(BaseModel):
     total_gross: float | None
     total_net_estimate: float | None
     work_fraction: float = 0
+    payer: Literal["employer", "zus"] | None = None
+    rule: str | None = None  # code of the rule that produced the period
 
 
 class BenefitResult(BaseModel):
@@ -261,6 +235,7 @@ class BenefitResult(BaseModel):
     deadline: date | None = None
     days_left: int | None = None
     deadline_note_pl: str | None = None
+    periods: list[str] = []  # codes of the timeline periods of this benefit
 
 
 class Risk(BaseModel):
@@ -293,6 +268,7 @@ class Deadline(BaseModel):
     status: Literal["open", "soon", "overdue"]
     note_pl: str
     benefit_code: str | None = None
+    legal_basis: str | None = None
 
 
 class Totals(BaseModel):
@@ -316,3 +292,6 @@ class EvaluationResult(BaseModel):
     totals: Totals
     situation_tags: list[str] = []
     assumptions_pl: list[str] = []
+    info_pl: list[str] = []
+    rules_version: str | None = None
+    rule_errors: dict[str, str] = {}  # rules that failed to evaluate (for the admin panel)

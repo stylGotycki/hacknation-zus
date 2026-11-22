@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 type Status = "checking" | "ok" | "down";
 
 /** Small indicator proving the frontend → nginx → backend → database chain works. */
-export function ApiStatus() {
+export function ApiStatus({ inverse = false }: { inverse?: boolean }) {
   const [status, setStatus] = useState<Status>("checking");
 
   useEffect(() => {
@@ -24,9 +24,9 @@ export function ApiStatus() {
       <span
         className={cn(
           "size-2 rounded-full",
-          status === "ok" && "bg-primary",
+          status === "ok" && (inverse ? "bg-white" : "bg-primary"),
           status === "down" && "bg-destructive",
-          status === "checking" && "bg-muted-foreground animate-pulse",
+          status === "checking" && (inverse ? "bg-white/60" : "bg-muted-foreground") + " animate-pulse",
         )}
       />
       {label}

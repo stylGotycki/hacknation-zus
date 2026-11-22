@@ -21,4 +21,9 @@ class Application(Base):
     submitted_to: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # List of {"at": ..., "status": ..., "note": ...} entries – the workflow trail.
     history: Mapped[list[dict[str, Any]]] = mapped_column(JSONType, default=list)
+    # Legal parameters (key -> value) in force when the application was submitted. A later change
+    # in the admin panel applies to new applications only; this one keeps its values.
+    params_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
+    # Version of the rule set (time of the latest rule change) used for this application.
+    rules_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

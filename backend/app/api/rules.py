@@ -3,16 +3,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.api.parameters import parameters_valid_on
 from app.core.db import DbSession
-from app.rules import (
-    EvaluationResult,
-    FamilyProfile,
-    MissingParameterError,
-    Params,
-    PlanError,
-    evaluate,
-)
+from app.engine import PlanViolation, evaluate_profile
+from app.engine.runtime import required_parameters
+from app.engine.store import load_params, load_rules, rules_version
+from app.rules import EvaluationResult, FamilyProfile
 
 router = APIRouter(prefix="/rules", tags=["rules"])
 
@@ -25,18 +20,33 @@ OnDate = Annotated[
 ]
 
 
+def run_evaluation(
+    db: DbSession, profile: FamilyProfile, on: date | None = None
+) -> EvaluationResult:
+    """Rules and parameters from the database; a broken plan -> 422 with the reasons in Polish."""
+    today = date.today()
+    on = on or today
+    params = load_params(db, on)
+    rules = load_rules(db)
+    missing = sorted(required_parameters(rules) - params.keys())
+    if missing:
+        raise HTTPException(
+            409,
+            f"Brak parametrów prawnych obowiązujących w dniu {on.isoformat()}: {', '.join(missing)}",
+        )
+    try:
+        result, _ = evaluate_profile(
+            profile, rules, params, today, params_date=on, rules_version=rules_version(db)
+        )
+    except PlanViolation as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return result
+
+
 @router.post("/evaluate", response_model=EvaluationResult)
 def evaluate_family(profile: FamilyProfile, db: DbSession, on: OnDate = None) -> EvaluationResult:
     """Entitlements, amounts, timeline and risks for a family profile.
 
-    Legal parameters are read from the database for the given date, so a past case is computed
-    with the law that applied then.
+    Rules and legal parameters are read from the database (both editable in the admin panel).
     """
-    on = on or date.today()
-    params = Params.from_rows(parameters_valid_on(db, on), on)
-    try:
-        return evaluate(profile, params)
-    except PlanError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except MissingParameterError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return run_evaluation(db, profile, on)

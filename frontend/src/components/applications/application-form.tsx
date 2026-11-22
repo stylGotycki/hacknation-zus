@@ -42,7 +42,7 @@ function FieldInput({
     <Field label={label} hint={field.hint_pl ?? undefined}>
       {field.type === "textarea" ? (
         <textarea
-          className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
           value={String(value ?? "")}
           onChange={(e) => onChange(e.target.value)}
         />

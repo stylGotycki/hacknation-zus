@@ -7,10 +7,11 @@ from sqlalchemy import select
 
 from app.api.parameters import parameters_valid_on
 from app.core.db import DbSession
+from app.engine.store import rules_version
 from app.forms import FORMS, FormDefinition, missing_fields
 from app.forms.prefill import Suggestion, suggest
 from app.models import Application, ApplicationDraft, Family
-from app.rules import FamilyProfile, MissingParameterError, Params, PlanError, evaluate
+from app.rules import FamilyProfile
 
 router = APIRouter(tags=["applications"])
 
@@ -60,14 +61,9 @@ def get_form(code: str) -> FormDefinition:
 @router.post("/applications/suggestions", response_model=list[Suggestion])
 def suggestions(profile: FamilyProfile, db: DbSession, on: date | None = None) -> list[Suggestion]:
     """Applications the family should file, prefilled from the calculation."""
-    on = on or date.today()
-    params = Params.from_rows(parameters_valid_on(db, on), on)
-    try:
-        result = evaluate(profile, params)
-    except PlanError as exc:
-        raise HTTPException(422, str(exc)) from exc
-    except MissingParameterError as exc:
-        raise HTTPException(409, str(exc)) from exc
+    from app.api.rules import run_evaluation
+
+    result = run_evaluation(db, profile, on)
     return suggest(result, profile.model_dump(mode="json"))
 
 
@@ -152,6 +148,8 @@ class ApplicationOut(BaseModel):
     data: dict[str, Any]
     history: list[HistoryEntry]
     created_at: datetime | None = None
+    params_count: int = 0
+    rules_version: str | None = None
 
 
 def _out(app: Application) -> ApplicationOut:
@@ -164,6 +162,8 @@ def _out(app: Application) -> ApplicationOut:
         data=app.data,
         history=[HistoryEntry(**h) for h in app.history],
         created_at=app.created_at,
+        params_count=len(app.params_snapshot or {}),
+        rules_version=app.rules_version,
     )
 
 
@@ -171,7 +171,9 @@ def _out(app: Application) -> ApplicationOut:
 def list_applications(owner: OwnerId, db: DbSession) -> list[ApplicationOut]:
     family = _family(db, owner)
     rows = db.scalars(
-        select(Application).where(Application.family_id == family.id).order_by(Application.id.desc())
+        select(Application)
+        .where(Application.family_id == family.id)
+        .order_by(Application.id.desc())
     )
     return [_out(a) for a in rows]
 
@@ -189,6 +191,8 @@ def submit_application(body: ApplicationIn, owner: OwnerId, db: DbSession) -> Ap
         form_code=body.form_code,
         status="submitted",
         data=body.data,
+        params_snapshot={p.key: p.value for p in parameters_valid_on(db, date.today())},
+        rules_version=rules_version(db),
         submitted_to=definition.submitted_to,
         history=[{"at": _now(), "status": "submitted", "note": STATUS_NOTE_PL["submitted"]}],
     )
@@ -216,7 +220,9 @@ def advance_application(application_id: int, owner: OwnerId, db: DbSession) -> A
         raise HTTPException(409, "Application is already decided")
     nxt = STATUS_FLOW[index + 1]
     application.status = nxt
-    who = {"zus": "ZUS", "registry": "urząd stanu cywilnego"}.get(application.submitted_to or "", "pracodawcę")
+    who = {"zus": "ZUS", "registry": "urząd stanu cywilnego"}.get(
+        application.submitted_to or "", "pracodawcę"
+    )
     note = STATUS_NOTE_PL[nxt] + (f" (przez {who})" if nxt == "in_progress" else "")
     application.history = [*application.history, {"at": _now(), "status": nxt, "note": note}]
     db.commit()

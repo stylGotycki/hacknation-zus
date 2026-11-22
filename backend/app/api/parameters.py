@@ -26,6 +26,10 @@ class ParameterOut(BaseModel):
     valid_to: date | None
     description_pl: str
     legal_basis: str
+    label_pl: str = ""
+    group_pl: str = ""
+    unit: str = "number"
+    value_labels: dict[str, str] = {}
 
 
 class ParametersResponse(BaseModel):

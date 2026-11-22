@@ -42,6 +42,11 @@ export type LegalParameter = {
   valid_to: string | null;
   description_pl: string;
   legal_basis: string;
+  /** Polish name, group and unit for the admin panel (weeks, days, months, years, pct, pln, people, number). */
+  label_pl: string;
+  group_pl: string;
+  unit: string;
+  value_labels: Record<string, string>;
 };
 
 export type ParametersResponse = { date: string; parameters: LegalParameter[] };
@@ -66,35 +71,20 @@ export type ParentProfile = {
   insurance_ended_on?: string | null;
   job_loss_reason?: "employer_bankruptcy" | "unlawful_dismissal" | "other" | null;
   average_monthly_base?: number | null;
+  monthly_bases?: number[] | null;
   working_time_fraction?: number;
   fixed_term_contract?: boolean;
   employer_insured_count?: number | null;
   start_relief?: boolean;
   contribution_debt?: number;
   debt_paid_on?: string | null;
-  debt_in_installments?: boolean;
-  base_raised_in_pregnancy?: boolean;
   planned_work_fraction?: number;
-  on_pregnancy_sick_leave?: boolean;
   sick_leave_start?: string | null;
   sick_leave_end?: string | null;
   sick_days_used_this_year?: number;
   age_over_50?: boolean;
-  monthly_bases?: number[] | null;
   on_childcare_leave?: boolean;
 };
-
-export type CareProfile = {
-  situation?: "sick_child" | "healthy_child" | "family_member";
-  child_age_years?: number;
-  child_disabled?: boolean;
-  other_household_member_available?: boolean;
-  days_planned?: number;
-  days_used_this_year?: number;
-  days_used_for_family_members?: number;
-};
-
-export type ParentalBlock = { person: "mother" | "father"; weeks: number; start?: string | null };
 
 export type ChildProfile = {
   situation?: Situation;
@@ -118,23 +108,28 @@ export type Plan = {
   maternity_before_birth_weeks?: number;
   maternity_weeks_to_father?: number;
   parental_weeks_father?: number | null;
+  parental_father_start?: string | null;
+  parental_mother_start?: string | null;
   parental_parts_mother?: number;
   parental_parts_father?: number;
+  paternity_start?: string | null;
   paternity_parts?: number;
   use_supplementary_leave?: boolean;
   supplementary_taken_by?: "mother" | "father";
-  parental_blocks?: ParentalBlock[] | null;
-  paternity_starts?: string[] | null;
+  averaged_rate?: boolean;
+  averaged_rate_applied_on?: string | null;
 };
+
+export type MotherCannotCare = "hospital" | "disabled" | "death" | "abandoned" | "employed";
 
 export type FamilyProfile = {
   child: ChildProfile;
   mother?: ParentProfile | null;
   father?: ParentProfile | null;
-  mother_cannot_care?: "hospital" | "disabled" | "death" | "abandoned" | null;
-  averaged_rate_applied_on?: string | null;
+  mother_cannot_care?: MotherCannotCare | null;
+  mother_situation_from?: string | null;
+  mother_situation_to?: string | null;
   plan?: Plan;
-  care?: CareProfile | null;
 };
 
 export type BenefitStatus = "eligible" | "conditional" | "not_eligible" | "info";
@@ -151,26 +146,22 @@ export type BenefitResult = {
   days: number | null;
   rate: number | null;
   monthly_gross: number | null;
-  monthly_net_estimate: number | null;
   total_gross: number | null;
-  total_net_estimate: number | null;
-  raised_to_minimum: boolean;
-  employer_days?: number | null;
-  zus_days?: number | null;
   start: string | null;
   end: string | null;
-  payer: "employer" | "zus" | "municipality" | null;
+  payer: "employer" | "zus" | null;
   apply_to_pl: string | null;
   documents_pl: string[];
   deadline: string | null;
   days_left: number | null;
   deadline_note_pl: string | null;
+  periods: string[];
 };
 
 export type LeavePeriod = {
   id: string;
   person: Person;
-  kind: "pregnancy_sickness" | "maternity" | "supplementary" | "parental" | "paternity";
+  kind: "pregnancy_sickness" | "maternity" | "maternity_equivalent" | "supplementary" | "parental" | "paternity";
   label_pl: string;
   start: string;
   end: string;
@@ -180,8 +171,9 @@ export type LeavePeriod = {
   rate: number | null;
   monthly_gross: number | null;
   total_gross: number | null;
-  total_net_estimate: number | null;
   work_fraction: number;
+  payer: "employer" | "zus" | null;
+  rule: string | null;
 };
 
 export type Risk = {
@@ -203,6 +195,7 @@ export type Deadline = {
   status: "open" | "soon" | "overdue";
   note_pl: string;
   benefit_code: string | null;
+  legal_basis: string | null;
 };
 
 export type AveragedRateComparison = {
@@ -239,6 +232,9 @@ export type EvaluationResult = {
   };
   situation_tags: string[];
   assumptions_pl: string[];
+  info_pl: string[];
+  rules_version: string | null;
+  rule_errors: Record<string, string>;
 };
 
 export function evaluateFamily(profile: FamilyProfile, date?: string) {
@@ -247,18 +243,6 @@ export function evaluateFamily(profile: FamilyProfile, date?: string) {
     method: "POST",
     body: JSON.stringify(profile),
   });
-}
-
-export type Scenario = {
-  id: string;
-  title_pl: string;
-  description_pl: string;
-  tags: string[];
-  profile: FamilyProfile;
-};
-
-export function listScenarios() {
-  return api<Scenario[]>("/scenarios");
 }
 
 // --- Applications (E6) ----------------------------------------------------------------------
@@ -386,6 +370,7 @@ export type AdminApplication = {
   submitted_to: string | null;
   created_at: string | null;
   last_note: string | null;
+  params_count: number;
 };
 
 const adminHeaders = (token: string) => ({ "X-Admin-Token": token });
@@ -395,9 +380,9 @@ export const adminParameters = (token: string) =>
 export const adminAddVersion = (
   token: string,
   key: string,
-  body: { value: unknown; valid_from: string; description_pl?: string; legal_basis?: string },
+  body: { value: unknown; valid_from?: string; legal_basis?: string },
 ) =>
-  api<LegalParameter>(`/admin/parameters/${key}/versions`, {
+  api<{ parameter: LegalParameter; applications_kept: number }>(`/admin/parameters/${key}/versions`, {
     method: "POST",
     headers: adminHeaders(token),
     body: JSON.stringify(body),
@@ -412,3 +397,128 @@ export const adminSetStatus = (token: string, id: number, status: ApplicationSta
     headers: adminHeaders(token),
     body: JSON.stringify({ status, note: note || null }),
   });
+
+// --- Admin: rules of the guide (GET/PUT /api/admin/rules) ------------------------------------
+
+export type RuleKind =
+  | "wartosc"
+  | "okres"
+  | "swiadczenie"
+  | "dokument"
+  | "termin"
+  | "ryzyko"
+  | "informacja"
+  | "zalozenie"
+  | "walidacja";
+
+export type RuleData = {
+  code: string;
+  kind: RuleKind;
+  title_pl: string;
+  group_pl: string;
+  order: number;
+  condition: string | null;
+  expression: string | null;
+  start: string | null;
+  rate: string | null;
+  work: string | null;
+  person: string | null;
+  period_kind: string | null;
+  text_pl: string;
+  severity: string | null;
+  benefit: string | null;
+  periods: string[];
+  status: string | null;
+  payer: string | null;
+  apply_to_pl: string;
+  deadline_kind: string | null;
+  legal_basis: string;
+  source: string;
+  description_pl: string;
+  active: boolean;
+  note?: string;
+};
+
+export type AdminRule = RuleData & {
+  modified: boolean;
+  in_seed: boolean;
+  uses: string[];
+  used_by: string[];
+  facts: string[];
+  parameters: string[];
+  errors: string[];
+};
+
+export type RuleDictionary = {
+  kinds: Record<RuleKind, string>;
+  period_kinds: Record<string, string>;
+  sources: Record<string, string>;
+  persons: string[];
+  facts: { path: string; type: string; description: string }[];
+  functions: { name: string; description: string }[];
+  parameters: { key: string; label: string; value: unknown }[];
+  rules: { code: string; kind: string; title: string }[];
+  version: string | null;
+};
+
+export type RuleTestResult = {
+  ok: boolean;
+  violation: string | null;
+  result: EvaluationResult | null;
+  values: Record<string, unknown>;
+  errors: Record<string, string>;
+};
+
+/** Error of an admin call: Polish message plus the list of rule problems, if any. */
+export class AdminError extends Error {
+  constructor(
+    message: string,
+    public errors: string[] = [],
+  ) {
+    super(message);
+  }
+}
+
+async function adminApi<T>(token: string, path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`/api/admin${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...adminHeaders(token), ...init?.headers },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    let detail: unknown = null;
+    try {
+      detail = (await res.json()).detail;
+    } catch {
+      /* not JSON */
+    }
+    if (detail && typeof detail === "object" && "message" in detail) {
+      const d = detail as { message: string; errors?: string[] };
+      throw new AdminError(d.message, d.errors ?? []);
+    }
+    throw new AdminError(typeof detail === "string" ? detail : `Błąd ${res.status}`);
+  }
+  return res.status === 204 ? (undefined as T) : (res.json() as Promise<T>);
+}
+
+export const adminRules = (token: string) => adminApi<AdminRule[]>(token, "/rules");
+export const adminRuleDictionary = (token: string) => adminApi<RuleDictionary>(token, "/rules/dictionary");
+export const adminValidateRule = (token: string, rule: RuleData, replace?: string) =>
+  adminApi<{ ok: boolean; errors: string[] }>(
+    token,
+    `/rules/validate${replace ? `?replace=${encodeURIComponent(replace)}` : ""}`,
+    { method: "POST", body: JSON.stringify(rule) },
+  );
+export const adminSaveRule = (token: string, rule: RuleData, isNew: boolean) =>
+  adminApi<AdminRule>(token, isNew ? "/rules" : `/rules/${rule.code}`, {
+    method: isNew ? "POST" : "PUT",
+    body: JSON.stringify(rule),
+  });
+export const adminResetRule = (token: string, code: string) =>
+  adminApi<AdminRule>(token, `/rules/${code}/reset`, { method: "POST" });
+export const adminDeleteRule = (token: string, code: string) =>
+  adminApi<void>(token, `/rules/${code}`, { method: "DELETE" });
+export const adminRuleHistory = (token: string, code: string) =>
+  adminApi<{ changed_at: string | null; note: string; data: RuleData }[]>(token, `/rules/${code}/history`);
+export const adminTestRules = (token: string, profile: unknown, draft?: RuleData) =>
+  adminApi<RuleTestResult>(token, "/rules/test", { method: "POST", body: JSON.stringify({ profile, draft }) });

@@ -1,6 +1,6 @@
 def test_citizens_one_per_scenario(client):
     items = client.get("/api/mock/citizens").json()
-    assert len(items) == 12 and items[0]["pesel_masked"].endswith("*****")
+    assert len(items) == 15 and items[0]["pesel_masked"].endswith("*****")
 
 
 def test_login_returns_owner_and_unknown_citizen_404(client):
@@ -39,6 +39,10 @@ def test_zus_profile_and_pue_question(client):
     assert profile["father"]["employment"] == "employee"
     answer = client.post(
         "/api/mock/pue/question",
-        json={"citizen_id": "S10", "subject": "Zadłużenie", "text": "Czy zaległość blokuje zasiłek?"},
+        json={
+            "citizen_id": "S10",
+            "subject": "Zadłużenie",
+            "text": "Czy zaległość blokuje zasiłek?",
+        },
     ).json()
     assert answer["ticket"].startswith("PUE/") and "zadłużenia" in answer["answer_pl"]

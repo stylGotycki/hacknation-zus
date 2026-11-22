@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api import admin, applications, health, mocks, parameters, rules, scenarios
+from app.api import admin, admin_rules, applications, health, mocks, parameters, rules, scenarios
 
 # Every router is mounted under /api in main.py, so nginx can forward paths unchanged.
 api_router = APIRouter()
@@ -11,3 +11,4 @@ api_router.include_router(scenarios.router)
 api_router.include_router(applications.router)
 api_router.include_router(mocks.router)
 api_router.include_router(admin.router)
+api_router.include_router(admin_rules.router)

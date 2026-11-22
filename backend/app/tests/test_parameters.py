@@ -25,8 +25,8 @@ def test_validity_period_picks_older_version(client):
 
 
 def test_single_parameter_and_404(client):
-    ok = client.get("/api/parameters/paternity_leave_days", params={"date": "2026-11-21"})
-    assert ok.status_code == 200 and ok.json()["value"] == 14
+    ok = client.get("/api/parameters/paternity_leave_weeks", params={"date": "2026-11-21"})
+    assert ok.status_code == 200 and ok.json()["value"] == 2
     assert client.get("/api/parameters/does_not_exist").status_code == 404
 
 
